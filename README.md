@@ -2,46 +2,235 @@
 
 This repository was created to store the scripts used in the publication "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for fast functional annotation and visualization of (meta)-omics datasets 
 ". These scripts run the following steps:
-1. [Obtention of datasets](https://github.com/iquasere/functional_annotation_publication#1.-obtention-of-datasets)
-2. [Installation of tools](https://github.com/iquasere/functional_annotation_publication#2.-installation-of-tools)
-3. [Execution of tools](https://github.com/iquasere/functional_annotation_publication#3.-execution-of-tools)
-4. [Results analysis](https://github.com/iquasere/functional_annotation_publication#4.-results-analysis)
+1. [Obtention of datasets](https://github.com/iquasere/functional_annotation_publication#obtention-of-datasets)
+2. [Installation of tools](https://github.com/iquasere/functional_annotation_publication#installation-of-tools)
+3. [Execution of tools](https://github.com/iquasere/functional_annotation_publication#execution-of-tools)
+4. [Results analysis](https://github.com/iquasere/functional_annotation_publication#results-analysis)
 
-## 1. Obtention of datasets
+## Obtention of datasets
 
+Obtain genomes for 7 prokaryotes (archaea and bacteria), and join them in a single file.
+Simulate RNA-Seq data for those prokaryotes for three different conditions: over-, normal, and underexpression of a collection of genes.
 ```
 git clone https://github.com/iquasere/functional_annotation_publication.git
 mkdir ann_paper
-wget -i functional_annotation_publication/genomes_links.txt -P ann_paper
-gunzip ann_paper/*
-awk '{print $1}' ann_paper/* >> ann_paper/genomes.fa
+awk 'BEGIN{FS="\t"}{print $9}' functional_annotation_publication/assets/simulated_taxa.tsv > ann_paper/genomes_links.txt 
+wget -i ann_paper/genomes_links.txt -P ann_paper
+gunzip ann_paper/*.gz
+awk '{print $1}' ann_paper/*.fa >> ann_paper/genomes.fasta
+rm ann_paper/*.fa
 ```
 
-## 2. Installation of tools
+## Installation of tools
 
+Requires **mamba** installed in the current environment. Mamba can be installed with ```conda install -c conda-forge mamba```
 ```
-mamba create -c conda-forge -c bioconda upimapi recognizer keggcharter dfast prokka eggnog-mapper -n ann_paper
-mkdir ~/anaconda3/envs/ann_paper/lib/python3.9/site-packages/data
-download_eggnog_data.py
-
+mamba create -c conda-forge -c bioconda upimapi recognizer keggcharter dfast prokka eggnog-mapper -n ann_paper -y
+mkdir ann_paper/eggnog_data
+conda activate ann_paper
+download_eggnog_data.py --data_dir ann_paper/eggnog_data -y
 git clone https://github.com/PedroMTQ/mantis.git
-cd mantis
-conda env create -f mantis_env.yml
+conda env create -f mantis/mantis_env.yml
 conda activate mantis_env
-cd ..
 python mantis setup_databases
 ```
 
-## 3. Execution of tools
+## Execution of tools
 
 ```
-upimapi.py -i ann_paper/proteomes.fasta -o ann_paper/upimapi_proteomes -rd resources_directory --evalue 0.1 -mts 20 -db uniprot -t 15
-recognizer.py -f ann_paper/proteomes.fasta -o ann_paper/recognizer_proteomes -rd resources_directory --evalue 0.1 -mts 20 -t 15 --tax-file ann_paper/upimapi_proteomes/UPIMAPI_results.tsv --tax-col "Taxonomic lineage (SPECIES)" --protein-id-col qseqid
-emapper.py -i ann_paper/proteomes.fasta -o ann_paper/eggnog_mapper_proteomes/eggnog_results --cpu 15
-python mantis run_mantis -t ann_paper/proteomes.fasta -o ann_paper/mantis_proteomes -c 15
+conda activate ann_paper
+prodigal -i ann_paper/genomes.fasta -a ann_paper/genes.fasta -o ann_paper/prodigal_out.txt
+grep '>' ann_paper/genes.fasta | awk '{print $1"\t"$3"\t"$5}' > genes.tsv
+awk '{print $1}' ann_paper/genes.fasta | sed 's/*//' - > ann_paper/tmp.fasta && mv ann_paper/tmp.fasta ann_paper/genes.fasta
+upimapi.py -i ann_paper/genes.fasta -o ann_paper/upimapi_genomes -rd resources_directory --evalue 0.1 -mts 20 -db uniprot -t 15
+recognizer.py -f ann_paper/genes.fasta -o ann_paper/recognizer_proteomes -rd resources_directory --evalue 0.1 -mts 20 -t 15 --tax-file ann_paper/upimapi_proteomes/UPIMAPI_results.tsv --tax-col "Taxonomic lineage (SPECIES)" --protein-id-col qseqid
+emapper.py -i ann_paper/genes.fasta -o ann_paper/eggnog_mapper_proteomes/eggnog_results --cpu 15
+python mantis run_mantis -t ann_paper/genes.fasta -o ann_paper/mantis_proteomes -c 15
 ```
 
-## 4. Results analysis
+## RNA-Seq simulation
+
+```
+awk 'BEGIN{FS="\t"}{print $10}' functional_annotation_publication/assets/simulated_taxa.tsv > ann_paper/transcriptomes_links.txt 
+wget -i ann_paper/transcriptomes_links.txt -P ann_paper
+gunzip ann_paper/*.gz
+awk '{print $1}' ann_paper/*.fa >> ann_paper/transcriptomes.fasta
+mkdir ann_paper/simulated ann_paper/simulated/rna 
+```
+IDs must be manually mapped, as they are not UniProt IDs. Therefore, they must first be extracted:
+
+<details>
+    <summary>Click to see code for obtaining IDs!</summary>
+    
+    ```python
+    out = 'ann_paper'
+    
+    def parse_fasta(file):
+        print(f'Parsing {file}')
+        lines = [line.rstrip('\n') for line in open(file)]
+        i = 0
+        sequences = dict()
+        while i < len(lines):
+            if lines[i].startswith('>'):
+                name = lines[i][1:]
+                sequences[name] = ''
+                i += 1
+                while i < len(lines) and not lines[i].startswith('>'):
+                    sequences[name] += lines[i]
+                    i += 1
+        return sequences
+    
+    ids = []
+    for file in [f'{out}/genomes.fasta', f'{out}/transcriptomes.fasta']:
+        ids += parse_fasta(file).keys()
+    with open('ids_to_map.txt', 'w') as f:
+        f.write('\n'.join(ids))
+        
+</details>
+
+```
+Then, go to the [web service](https://www.uniprot.org/uploadlists/), pick the ```ids_to_map.txt``` file, select ```Ensembl Genomes Protein``` in the "From" field, and download results as TSV. Must contain the following columns: ```yourlist:...```, ```Pathway``` and ```Protein names```. ID map results saved as ```ann_paper/simulated/uniprotinfo.tsv```
+<details>
+    <summary>Click to see code for simulating reads!</summary>
+
+    ```python
+    import pandas as pd
+    
+    def set_abundance_mt(simulated, profiles, uniprotinfo, output_dir, factor = 1, base = 0):
+        simulated = simulated[simulated['Transcriptome link'].notnull()].reset_index()
+        uniprotinfo = pd.read_csv(uniprotinfo, sep = '\t', index_col = 0)
+        handler = open(f'{output_dir}/abundance{factor}.config', 'w')
+        print(f'Defining expressions for {len(simulated)} organisms.')
+        for i in range(len(simulated)):
+            pbar = ProgressBar()
+            print(f'Dealing with {simulated.iloc[i]["Species"]}')
+            rna_file = f'SimulatedMGMT/rna/{simulated.iloc[i]["Transcriptome link"].split("/")[-1].split(".gz")[0]}'
+            abundance = simulated.iloc[i]['Abundance']
+            profile = profiles[simulated.iloc[i]['Profile']]
+            for rna in pbar(parse_fasta(rna_file).keys()):
+                found = False
+                ide = rna.split()[0]
+                if ide not in uniprotinfo.index:
+                    continue
+                info = uniprotinfo.loc[ide]
+                for path in profile['Pathway'].keys():
+                    if path in str(info['Pathway']): 
+                        handler.write(f'{rna}\t{base + factor * abundance}\n')
+                        found = True
+                if not found:
+                    if 'ATP synthase' in str(info['Protein names']):
+                        handler.write(f'{rna}\t{base + factor * abundance}\n')
+                    else:
+                        handler.write(f'{rna}\t{base + abundance}\n')
+    
+    def run_command(bash_command, print_message=True):
+        if print_message:
+            print(bash_command)
+        run(bash_command.split(), check=True)
+    
+    def use_grinder(reference_file, abundance_file, output_dir, coverage_fold = None, seed = None):
+        command = f'grinder -fastq_output 1 -qual_levels 30 10 -read_dist 151 -insert_dist 2500 
+                  f'-mutation_dist poly4 3e-3 3.3e-8 -mate_orientation FR -output_dir {output_dir} '
+                  f'-reference_file {reference_file} -abundance_file {abundance_file} -coverage_fold {coverage_fold} '
+                  f'-random_seed {seed}'
+        run_command(command)
+    
+    def divide_fq(file, output1, output2):
+        run_command(f'bash functional_annotation_publication/assets/unmerge-paired-reads.sh {file} {output1} {output2}')
+    
+    uniprotinfo = pd.read_csv(f'{out}/simulated/uniprotinfo.tsv', sep='\t')
+    uniprotinfo.columns = ['Ensembl_IDs'] + uniprotinfo.columns.tolist()[1:]
+    letters = ['a', 'b', 'c']
+    factors = ['0.01', '1', '100']
+    simulated = pd.read_csv('functional_annotation_publication/assets/simulated_taxa.xlsx', sep='\t')
+    sim_dir = f'{out}/simulated_data'
+    profiles = {
+        'archaea_co2': {
+            'Pathway':{
+                'One-carbon metabolism; methanogenesis from CO(2)': 1, 
+                'Cofactor biosynthesis': 1}, 
+            'Protein names':{'ATP synthase': 1}},
+        'archaea_acetate': {
+            'Pathway':{
+                'One-carbon metabolism; methanogenesis from acetate': 1, 
+                'Cofactor biosynthesis': 1}, 
+            'Protein names':{'ATP synthase': 1}},
+        'bacteria':{
+            'Pathway':{
+                'lipid metabolism': 1, 
+                'Cofactor biosynthesis': 1,
+                'Metabolic intermediate biosynthesis': 1}, 
+            'Protein names':{'ATP synthase': 1}}}
+    
+    # this might be needed: download grinder from ;  perl Makefile.PL; make; sudo make install; cpan Bio::Perl           
+    for factor in [100, 1, 0.01]:
+        set_abundance_mt(
+            simulated, profiles, f'{sim_dir}/uniprot_info.tsv', f'{sim_dir}/rna', factor = factor)
+        seed = 13
+        for letter in ['a','b','c']:
+            pathlib.Path(f'{sim_dir}/rna/{letter}/{factor}').mkdir(parents=True, exist_ok=True)
+            run_grinder(
+                f'{out}/transcriptomes.fasta', f'{sim_dir}/rna/abundance{factor}.config',
+                f'{sim_dir}/rna/{letter}/{factor}', seed=seed, coverage_fold='25')
+            seed += 1
+            divide_fq(
+                f'{sim_dir}/rna/{letter}/{factor}/grinder-reads.fastq',
+                f'{sim_dir}/rna/{letter}/{factor}/rnaseq_{letter}{factor}reads_R1.fastq',
+                f'{sim_dir}/rna/{letter}/{factor}/rnaseq_{letter}{factor}reads_R2.fastq')
+    ```
+</details>
+
+## RNA-Seq quantification
+
+Quantification followed preprocessing with MOSCA and read alignment with Bowtie2.
+
+<details>
+    <summary>Click to see code for RNA-seq quantification!</summary>
+    ```python
+    import pandas as pd
+    
+    letters = ['a', 'b', 'c']
+    factors = ['0.01', '1', '100']
+    
+    quant_df = pd.DataFrame(columns=['sseqid'])
+    for factor in factors:
+        for letter in letters:
+            '''
+            run_command(
+                'python /home/jsequeira/anaconda3/envs/mosca/share/MOSCA/scripts/preprocess.py '
+                '-i paper_pipeline/sim_formicicum/rna/{0}/{1}/rnaseq_{0}{1}reads_R1.fastq,'
+                'paper_pipeline/sim_formicicum/rna/{0}/{1}/rnaseq_{0}{1}reads_R2.fastq -t 14 -d mrna '
+                '-o paper_pipeline/formicicum_mt/Preprocess/ -adaptdir resources_directory/adapters/ '
+                '-rrnadbs resources_directory/rRNA_databases/ --avgqual 20 --minlen 100'.format(letter, factor))
+            '''
+            partial = pd.DataFrame(columns=['qseqid', 'sseqid', 'pident', 'length', 'mismatch',
+                          'gapopen', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'])
+            for fr in ['forward', 'reverse']:
+                '''
+                run_command(
+                    'diamond blastx -p 14 -d SimMOSCA2/prot/Methanobacterium_formicicum_proteome.dmnd -f 6 '
+                    '-o paper_pipeline/formicicum_mt/Quantification/rnaseq{0}{1}_{2}_aligned.blast '
+                    '-q paper_pipeline/formicicum_mt/Preprocess/Trimmomatic/quality_trimmed_rnaseq_{0}{1}reads_{2}_paired.fq '
+                    '--very-sensitive --evalue 1e-10'.format(letter, factor, fr))
+                '''
+                blast = parse_blast('paper_pipeline/formicicum_mt/Quantification/rnaseq{}{}_{}_aligned.blast'.format(
+                    letter, factor, fr))
+    
+                partial = pd.concat([partial, blast])
+    
+            partial = partial.groupby('sseqid')['evalue'].count().reset_index()
+            partial.columns = ['sseqid', 'rnaseq{}{}'.format(factor, letter)]
+            quant_df = pd.merge(quant_df, partial, on='sseqid', how='outer')
+    
+    cols = ['rnaseq{}{}'.format(factor, letter) for factor in factors for letter in letters]
+    quant_df[cols] = quant_df[cols].fillna(value=0)
+    quant_df[cols] = quant_df[cols].astype(int)
+    quant_df['sseqid'] = [ide.split('|')[1] for ide in quant_df['sseqid']]
+    quant_df.to_csv('paper_pipeline/formicicum_mt/Quantification/quantification.tsv', sep='\t', index=False)
+    ```
+</details>
+
+## Results analysis
 
 ```python
 out = 'ann_paper'

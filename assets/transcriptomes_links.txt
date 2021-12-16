@@ -1,0 +1,7 @@
+ftp://ftp.ensemblgenomes.org/pub/bacteria/release-41/fasta/bacteria_0_collection/methanospirillum_hungatei_jf_1/cds/Methanospirillum_hungatei_jf_1.ASM1344v1.cds.all.fa.gz
+ftp://ftp.ensemblgenomes.org/pub/bacteria/release-41/fasta/bacteria_7_collection/methanosaeta_concilii_gp6/cds/Methanosaeta_concilii_gp6.ASM20441v1.cds.all.fa.gz
+ftp://ftp.ensemblgenomes.org/pub/bacteria/release-41/fasta/bacteria_92_collection/methanobacterium_formicicum/cds/Methanobacterium_formicicum.DSM1535.cds.all.fa.gz
+ftp://ftp.ensemblgenomes.org/pub/bacteria/release-41/fasta/bacteria_20_collection/syntrophobacter_fumaroxidans_mpob/cds/Syntrophobacter_fumaroxidans_mpob.ASM1496v1.cds.all.fa.gz
+ftp://ftp.ensemblgenomes.org/pub/bacteria/release-41/fasta/bacteria_95_collection/geobacter_sulfurreducens/cds/Geobacter_sulfurreducens.ASM96103v1.cds.all.fa.gz
+ftp://ftp.ensemblgenomes.org/pub/bacteria/release-41/fasta/bacteria_1_collection/pelobacter_propionicus_dsm_2379/cds/Pelobacter_propionicus_dsm_2379.ASM1504v1.cds.all.fa.gz
+ftp://ftp.ensemblgenomes.org/pub/bacteria/release-41/fasta/bacteria_13_collection/syntrophomonas_wolfei_subsp_wolfei_str_goettingen_g311/cds/Syntrophomonas_wolfei_subsp_wolfei_str_goettingen_g311.ASM1472v1.cds.all.fa.gz
