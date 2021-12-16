@@ -60,9 +60,9 @@ mkdir ann_paper/simulated ann_paper/simulated/rna
 IDs must be manually mapped, as they are not UniProt IDs. Therefore, they must first be extracted:
 
 <details>
-    <summary>Click to see code for obtaining IDs!</summary>
+  <summary>Click to see code for obtaining IDs</summary>
     
-    ```python
+  ```python
     out = 'ann_paper'
     
     def parse_fasta(file):
@@ -85,15 +85,16 @@ IDs must be manually mapped, as they are not UniProt IDs. Therefore, they must f
         ids += parse_fasta(file).keys()
     with open('ids_to_map.txt', 'w') as f:
         f.write('\n'.join(ids))
-        
+  ```        
 </details>
 
-```
-Then, go to the [web service](https://www.uniprot.org/uploadlists/), pick the ```ids_to_map.txt``` file, select ```Ensembl Genomes Protein``` in the "From" field, and download results as TSV. Must contain the following columns: ```yourlist:...```, ```Pathway``` and ```Protein names```. ID map results saved as ```ann_paper/simulated/uniprotinfo.tsv```
-<details>
-    <summary>Click to see code for simulating reads!</summary>
 
-    ```python
+Then, go to the [web service](https://www.uniprot.org/uploadlists/), pick the ```ids_to_map.txt``` file, select ```Ensembl Genomes Protein``` in the "From" field, and download results as TSV. Must contain the following columns: ```yourlist:...```, ```Pathway``` and ```Protein names```. ID map results saved as ```ann_paper/simulated/uniprotinfo.tsv```
+
+<details>
+  <summary>Click to see code for simulating reads</summary>
+
+  ```python
     import pandas as pd
     
     def set_abundance_mt(simulated, profiles, uniprotinfo, output_dir, factor = 1, base = 0):
@@ -177,7 +178,7 @@ Then, go to the [web service](https://www.uniprot.org/uploadlists/), pick the ``
                 f'{sim_dir}/rna/{letter}/{factor}/grinder-reads.fastq',
                 f'{sim_dir}/rna/{letter}/{factor}/rnaseq_{letter}{factor}reads_R1.fastq',
                 f'{sim_dir}/rna/{letter}/{factor}/rnaseq_{letter}{factor}reads_R2.fastq')
-    ```
+  ```
 </details>
 
 ## RNA-Seq quantification
@@ -185,8 +186,9 @@ Then, go to the [web service](https://www.uniprot.org/uploadlists/), pick the ``
 Quantification followed preprocessing with MOSCA and read alignment with Bowtie2.
 
 <details>
-    <summary>Click to see code for RNA-seq quantification!</summary>
-    ```python
+  <summary>Click to see code for RNA-seq quantification!</summary>
+  
+  ```python
     import pandas as pd
     
     letters = ['a', 'b', 'c']
@@ -227,7 +229,7 @@ Quantification followed preprocessing with MOSCA and read alignment with Bowtie2
     quant_df[cols] = quant_df[cols].astype(int)
     quant_df['sseqid'] = [ide.split('|')[1] for ide in quant_df['sseqid']]
     quant_df.to_csv('paper_pipeline/formicicum_mt/Quantification/quantification.tsv', sep='\t', index=False)
-    ```
+  ```
 </details>
 
 ## Results analysis
