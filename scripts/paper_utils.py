@@ -127,3 +127,12 @@ def parse_gff(filename):
     file.columns = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame', 'attribute']
     return pd.concat([file, pd.DataFrame(list(file['attribute'].apply(
         lambda x: {part[0]:part[1] for part in [y.split('=') for y in x.split(';')]})))], axis=1)
+
+
+# is same identification if Jaccard Index / 100 > 0.5
+def is_same(list1, list2):
+    def jaccard_index(l1, l2):
+        return len([ide for ide in l1 if ide in l2]) / len(set(l1 + l2))
+    if list1 == [''] or list2 == ['']:
+        return False
+    return jaccard_index(list1, list2) > 0.5

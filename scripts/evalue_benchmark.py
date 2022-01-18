@@ -1,4 +1,4 @@
-from paper_utils import calculate_quality_metrics, count_on_file, blast_consensus
+from paper_utils import calculate_quality_metrics, count_on_file, blast_consensus, is_same
 import pandas as pd
 from tqdm import tqdm
 
@@ -51,7 +51,7 @@ def analyze_recognizer(recognizer_excel_filename, metrics_filename):
                     df['DB ID'] = df['DB ID'].str.replace('smart', 'SM')
                 df[v[0]] = df[v[0]].apply(lambda x: x[:-1].split(';'))
                 df['DB ID'] = df['DB ID'].apply(lambda x: x.split(';'))
-                tps = sum([is_true_positive(df.iloc[i]['DB ID'], df.iloc[i][v[0]]) for i in range(len(df))])
+                tps = sum([is_same(df.iloc[i]['DB ID'], df.iloc[i][v[0]]) for i in range(len(df))])
                 fps = len(df) - tps
                 fns = uniprotinfo_diamond[v[0]].notnull().sum() - tps
                 print(f'TPs:{tps} FPs:{fps} FNs:{fns}')
@@ -59,9 +59,9 @@ def analyze_recognizer(recognizer_excel_filename, metrics_filename):
                 recognizer_metrics.append(
                     {'evalue': evalue, 'db': db, 'TPs': tps, 'FPs': fps, 'FNs': fns, 'precision': precision,
                      'recall': recall, 'f1_score': f1_score})
-    recognizer_metrics = pd.DataFrame(recognizer_metrics).sort_values(by=['db', 'evalue'], ascending=False)[
-        ['db', 'evalue'] + recognizer_metrics.columns.tolist()[2:]]
-    recognizer_metrics.to_excel(metrics_filename, index=False)
+    recognizer_metrics = pd.DataFrame(recognizer_metrics).sort_values(by=['db', 'evalue'], ascending=False)
+    recognizer_metrics[['db', 'evalue'] + recognizer_metrics.columns.tolist()[2:]].to_excel(
+        metrics_filename, index=False)
 
 
 out = 'ann_paper'
@@ -78,21 +78,16 @@ upimapi_metrics = []
 for evalue in evalues:
     print(evalue)
     upi_meta = upimapi_meta[upimapi_meta['evalue'] < evalue]
-    tp = (upi_meta['sseqid'] == upi_meta['diamond']).sum()
-    fp = (upi_meta['sseqid'] != upi_meta['diamond']).sum()
+    tp = (upi_meta['sseqid'] == upi_meta['Entry']).sum()
+    fp = (upi_meta['sseqid'] != upi_meta['Entry']).sum()
     fn = n_proteins - len(upi_meta)      # proteins that could not be identified
     precision, recall, f1_score = calculate_quality_metrics(tp, fp, fn)
     upimapi_metrics.append({'evalue': evalue, 'TPs': tp, 'FPs': fp, 'FNs': fn, 'precision': precision,
                             'recall': recall, 'f1_score': f1_score})
 upimapi_metrics = pd.DataFrame(upimapi_metrics)
-upimapi_metrics.to_excel(f'{out}/upimapi_metrics.xlsx')
+upimapi_metrics.to_excel(f'{out}/table_s_6.xlsx')
 
 # reCOGnizer
 uniprotinfo_diamond = pd.read_csv(f'{out}/uniprotinfo.tsv', sep='\t')
-query2upinfo = pd.merge(prodigal2diamond, uniprotinfo_diamond, left_on='diamond', right_on='Entry', how='left')
-analyze_recognizer(f'{out}/recognizer_genomes/reCOGnizer_results.xlsx', f'{out}/recognizer_metrics.xlsx')
-'''
-analyze_recognizer(
-    f'{out}/recognizer_genomes_without_taxonomy/reCOGnizer_results.xlsx',
-    f'{out}/recognizer_genomes_without_taxonomy/recognizer_metrics.xlsx')
-'''
+query2upinfo = pd.merge(prodigal2diamond, uniprotinfo_diamond, on='Entry', how='left')
+analyze_recognizer(f'{out}/recognizer_genomes/reCOGnizer_results.xlsx', f'{out}/table_s_7.xlsx')

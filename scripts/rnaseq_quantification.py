@@ -50,5 +50,8 @@ for letter in ['a', 'b', 'c']:
                 f'{out}/alignments/mt_{n}{letter}.readcounts', sep='\t', header=None,
                 names=['name', f'mt_{n}{letter}']), how='outer', on='name')
 mt_cols = [f'mt_{n}{letter}' for letter in ['a', 'b', 'c'] for n in [0.01, 1, 100]]
-readcounts[mt_cols] = readcounts[mt_cols].fillna(value=0.0).astype(int)
-readcounts.to_csv(f'{out}/readcounts.tsv', sep='\t', index=False)
+readcounts[mt_cols] = readcounts[mt_cols].fillna(value=0.0)
+for n in [0.01, 1, 100]:
+    readcounts[f'mt_{n}'] = readcounts[[f'mt_{n}{l}' for l in ['a', 'b', 'c']]].mean(axis=1)
+readcounts[[f'mt_{n}' for n in [0.01, 1, 100]]] = readcounts[[f'mt_{n}' for n in [0.01, 1, 100]]].astype(int)
+readcounts[['name'] + [f'mt_{n}' for n in [0.01, 1, 100]]].to_csv(f'{out}/readcounts.tsv', sep='\t', index=False)
