@@ -1,9 +1,11 @@
-from paper_utils import count_on_file, is_same, parse_mantis_consensus, parse_gff
+from paper_utils import count_on_file, is_same, parse_mantis_consensus, parse_gff, parse_blast, get_fasta_keys
 import pandas as pd
+import numpy as np
+import re
 
 
 def percentage(value, total):
-    return round(value / total * 100, 2)
+    return f'{value} ({round(value / total * 100, 2)} %)'
 
 
 def read_res_df(filename):
@@ -16,6 +18,7 @@ def read_res_df(filename):
 
 
 out = 'ann_paper'
+print('Table 1 in progress')
 upimapi_res = pd.read_csv(f'{out}/upimapi_genomes/UPIMAPI_results.tsv', sep='\t')
 upimapi_res = upimapi_res.groupby('qseqid')[
     ['sseqid', 'Protein names', 'Cross-reference (KEGG)', 'EC number']].first().reset_index()
@@ -26,14 +29,15 @@ uncharacterized = (upimapi_res["Protein names"] == "Uncharacterized protein").su
 kegg_ids = upimapi_res['Cross-reference (KEGG)'].notnull().sum()
 ec_numbers = upimapi_res['EC number'].notnull().sum()
 table1 = pd.DataFrame([
-    ['Annotated proteins', f'{annotated} ({percentage(annotated, n_proteins)} %)'],
-    ['Different UniProt IDs', f'{different_ids} ({percentage(different_ids, n_proteins)} %)'],
-    ['Uncharacterized proteins', f'{uncharacterized} ({percentage(uncharacterized, n_proteins)} %)'],
-    ['Proteins with assigned KEGG ID', f'{kegg_ids} ({percentage(kegg_ids, n_proteins)} %)'],
-    ['Proteins with assigned EC number', f'{ec_numbers} ({percentage(ec_numbers, n_proteins)} %)']]).set_index(0)
+    ['Annotated proteins', percentage(annotated, n_proteins)],
+    ['Different UniProt IDs', percentage(different_ids, n_proteins)],
+    ['Uncharacterized proteins', percentage(uncharacterized, n_proteins)],
+    ['Proteins with assigned KEGG ID', percentage(kegg_ids, n_proteins)],
+    ['Proteins with assigned EC number', percentage(ec_numbers, n_proteins)]]).set_index(0)
 table1.columns = ['Number of genes and respective percentage']
 table1.to_excel(f'{out}/table1.xlsx')
 
+print('Table 2 in progress')
 recognizer_res = pd.read_csv(f'{out}/recognizer_genomes/reCOGnizer_results.tsv', sep='\t')
 recognizer_res = recognizer_res[recognizer_res['evalue'] < 0.001]
 cog_res = recognizer_res[recognizer_res['DB ID'].str.startswith('COG')]
@@ -44,14 +48,18 @@ table2 = table2.groupby(['COG general functional category', 'COG functional cate
 table2 = table2.append(pd.Series({('No COG ID', '-'): no_cog_id}))
 table2.to_excel(f'{out}/table2.xlsx')
 
+print('Table 3 in progress')
 table3 = []
 for db in ['CDD', 'NCBIfam', 'Protein_Clusters', 'TIGRFAM', 'Pfam', 'Smart', 'COG', 'KOG']:
+    print(db)
     df = pd.read_excel(f'{out}/recognizer_genomes/reCOGnizer_results.xlsx', sheet_name=db)
+    cols = df.columns.tolist()
+    cols.remove('qseqid')
+    df = df.groupby('qseqid')[cols].first().reset_index()
     line = {'Database': db,
-            'Annotated proteins': f'{len(df)} ({percentage(len(df), n_proteins)} %)'}
+            'Annotated proteins': percentage(len(df), n_proteins)}
     if db not in ['Smart', 'KOG']:
-        line['Proteins with assigned EC number'] = \
-            f'{df["EC number"].notnull().sum()} ({percentage(df["EC number"].notnull().sum(), n_proteins)} %)'
+        line['Proteins with assigned EC number'] = percentage(df["EC number"].notnull().sum(), n_proteins)
     else:
         line['Proteins with assigned EC number'] = '0 (0 %)'
     table3.append(line)
@@ -60,34 +68,74 @@ pd.DataFrame(table3).to_excel(f'{out}/table3.xlsx')
 # Table 4 is manually set
 # Table 5 is made in tools_benchmark
 
-# Table 6 has one column with times of analysis manually set
+# Table 6
 print('Table 6 in progress')
-n_prot_metagenome = count_on_file('>', f'{out}/genes_MG.fasta')
-n_ann_upimapi_and_recognizer = len(set(
-    list(pd.read_csv(f'{out}/upimapi_metagenome/UPIMAPI_results.tsv', sep='\t')['qseqid']) +
-    list(pd.read_csv(f'{out}/recognizer_metagenome/reCOGnizer_results.tsv', sep='\t')['qseqid'])))
-print('UPIMAPI + reCOGnizer done')
-n_ann_mantis = len(set(parse_mantis_consensus(f'{out}/mantis_metagenome/consensus_annotation.tsv')['Query']))
-print('Mantis done')
-n_ann_eggnog_mapper = len(set(pd.read_csv(
-    f'{out}/eggnog_mapper_metagenome/eggnog_results.emapper.annotations', sep='\t', skiprows=4, skipfooter=3)['#query']))
-print('eggNOG-mapper done')
-n_prot_prokka = count_on_file('>', f'{out}/prokka_metagenome/PROKKA_01132022.faa')
-prokka_df = pd.read_csv(f'{out}/prokka_metagenome/PROKKA_01132022.tsv', sep='\t')
-n_ann_prokka = (prokka_df['ftype'] == 'CDS').sum() - (prokka_df['product'] == 'hypothetical protein').sum()
-print('Prokka done')
-n_prot_dfast = count_on_file('>', f'{out}/dfast_metagenome/protein.faa')
-dfast_df = parse_gff(f'{out}/dfast_metagenome/genome_trimmed.gff')
-n_ann_dfast = (dfast_df['feature'] == 'CDS').sum() - (dfast_df['product'] == 'hypothetical protein').sum()
-print('DFAST done')
-table6 = pd.DataFrame([
-    ['UPIMAPI + reCOGnizer', f'{n_ann_upimapi_and_recognizer} ({percentage(n_ann_upimapi_and_recognizer, n_prot_metagenome)} %)'],
-    ['Mantis', f'{n_ann_mantis} ({percentage(n_ann_mantis, n_prot_metagenome)} %)'],
-    ['eggNOG-mapper', f'{n_ann_eggnog_mapper} ({percentage(n_ann_eggnog_mapper, n_prot_metagenome)} %)'],
-    ['Prokka', f'{n_ann_prokka} ({percentage(n_ann_prokka, n_prot_prokka)} %)'],
-    ['DFAST', f'{n_ann_dfast} ({percentage(n_ann_dfast, n_prot_dfast)} %)']])
-table6.columns = ['Tool', '# of protein annotated']
-table6.to_excel(f'{out}/table_6.xlsx', index=False)
+n_prot_real = count_on_file('>', f'{out}/genes_MG.fasta')
+upimapi_real = pd.read_csv(f'{out}/upimapi_metagenome/UPIMAPI_results.tsv', sep='\t')
+upimapi_real = upimapi_real.groupby('qseqid')[['Entry', 'EC number', 'Cross-reference (eggNOG)']].first().reset_index()
+recognizer_real = pd.read_csv(f'{out}/recognizer_metagenome/reCOGnizer_results.tsv', sep='\t')
+cog_ser = recognizer_real[recognizer_real['cog'].notnull()].groupby('qseqid')['cog'].apply(
+    lambda x: '; '.join(set(x)))
+ecs_ser = recognizer_real[recognizer_real['EC number'].notnull()].groupby('qseqid')['EC number'].apply(
+    lambda x: '; '.join(set(x)))
+recognizer_real = recognizer_real.groupby('qseqid')['DB ID'].first().reset_index()
+mantis_real = parse_mantis_consensus(f'{out}/mantis_metagenome/consensus_annotation.tsv')
+eggnog_real = pd.read_csv(
+    f'{out}/eggnog_mapper_metagenome/eggnog_results.emapper.annotations', sep='\t', skiprows=4, skipfooter=3)
+eggnog_real.replace('-', np.nan, inplace=True)
+eggnog_real['eggNOG_OGs'] = eggnog_real['eggNOG_OGs'].apply(lambda x: x.split('@')[0])
+prokka_real = pd.read_csv(f'{out}/prokka_metagenome/PROKKA_01132022.tsv', sep='\t')
+prokka_real = prokka_real[(prokka_real['ftype'] == 'CDS') & (prokka_real['product'] != 'hypothetical protein')]
+prokka_real.rename(columns={'EC_number': 'EC number (Prokka)', 'COG': 'COG (Prokka)', 'locus_tag': 'ID (Prokka)'}, inplace=True)
+prot_prokka_real = count_on_file('>', f'{out}/prokka_metagenome/PROKKA_01132022.faa')
+dfast_real = parse_gff(f'{out}/dfast_metagenome/genome_trimmed.gff')
+dfast_real = dfast_real[(dfast_real['feature'] == 'CDS')  & (dfast_real['product'] != 'hypothetical protein')]
+dfast_real['COG'] = dfast_real['note'].apply(
+    lambda x: np.nan if 'COG:' not in x else re.split(':| ', x.split('COG:')[-1])[0])
+dfast_real.rename(columns={'ID': 'ID (DFAST)', 'EC_number': 'EC number (DFAST)', 'COG': 'COG (DFAST)'}, inplace=True)
+prot_dfast_real = count_on_file('>', f'{out}/dfast_metagenome/protein.faa')
+real_df = pd.DataFrame(get_fasta_keys(f'{out}/genes_MG.fasta'), columns=['qseqid']).iloc[:-1]   # get one empty line
+real_df['qseqid'] = real_df['qseqid'].apply(lambda x: x.split()[0])
+real_df = pd.merge(
+    real_df, upimapi_real[['qseqid', 'Entry', 'EC number', 'Cross-reference (eggNOG)']], on='qseqid', how='left')
+real_df = pd.merge(real_df, recognizer_real, on='qseqid', how='left')
+real_df = pd.merge(real_df, cog_ser, left_on='qseqid', right_index=True, how='left')
+real_df = pd.merge(real_df, ecs_ser, left_on='qseqid', right_index=True, how='left')
+real_df = pd.merge(real_df, eggnog_real[['#query', 'EC', 'eggNOG_OGs']], left_on='qseqid', right_on='#query', how='left')
+real_df = pd.merge(real_df, mantis_real[['Query', 'enzyme_ec', 'cog']], left_on='qseqid', right_on='Query', how='left')
+real_df.rename(columns={
+    'Entry': 'ID (UPIMAPI)',
+    'DB ID': 'ID (reCOGnizer)',
+    '#query': 'ID (eggNOG-mapper)',
+    'Query': 'ID (Mantis)',
+    'EC number_x': 'EC number (UPIMAPI)',
+    'EC number_y': 'EC number (reCOGnizer)',
+    'EC': 'EC number (eggNOG-mapper)',
+    'enzyme_ec': 'EC number (Mantis)',
+    'Cross-reference (eggNOG)': 'COG (UPIMAPI)',
+    'cog_x': 'COG (reCOGnizer)',
+    'eggNOG_OGs': 'COG (eggNOG mapper)',
+    'cog_y': 'COG (Mantis)'}, inplace=True)
+real_df['ID (UPIMAPI + reCOGnizer)'] = real_df['ID (UPIMAPI)'].combine_first(real_df['ID (reCOGnizer)'])
+real_df['EC number (UPIMAPI + reCOGnizer)'] = real_df['EC number (UPIMAPI)'].combine_first(real_df['EC number (reCOGnizer)'])
+real_df['COG (UPIMAPI + reCOGnizer)'] = real_df['COG (UPIMAPI)'].combine_first(real_df['COG (reCOGnizer)'])
+
+table6 = []
+for tool in ['UPIMAPI + reCOGnizer', 'Mantis', 'eggNOG mapper']:
+    table6.append([tool,
+                   percentage(real_df[f'ID ({tool})'].notnull().sum(), n_prot_real),
+                   percentage(real_df[f'EC number ({tool})'].notnull().sum(), n_prot_real),
+                   percentage(real_df[f'COG ({tool})'].notnull().sum(), n_prot_real)])
+table6.append(['Prokka',
+               percentage(prokka_real[f'ID (Prokka)'].notnull().sum(), prot_prokka_real),
+               percentage(prokka_real[f'EC number (Prokka)'].notnull().sum(), prot_prokka_real),
+               percentage(prokka_real[f'COG (Prokka)'].notnull().sum(), prot_prokka_real)])
+table6.append(['DFAST',
+               percentage(dfast_real[f'ID (DFAST)'].notnull().sum(), prot_dfast_real),
+               percentage(dfast_real[f'EC number (DFAST)'].notnull().sum(), prot_dfast_real),
+               percentage(dfast_real[f'COG (DFAST)'].notnull().sum(), prot_dfast_real)])
+pd.DataFrame(table6, columns=['Tool', '# of proteins annotated', '# of proteins with EC number assigned',
+                              '# of proteins with COG assigned']).to_excel(f'{out}/table_6.xlsx', index=False)
 
 # Tables S1, S2, S3 and S4 were manually composed
 
@@ -97,9 +145,9 @@ upimapi_res.iloc[:50].to_csv(f'{out}/Table S5.tsv', sep='\t', index=False)
 # Tables S6 and S7 are the e-value benchmarks, composed in the respective script
 
 # Table S8
+print('Table S8 in progress')
 pd.read_excel(f'{out}/recognizer_genomes/reCOGnizer_results.xlsx', sheet_name='COG').iloc[:50].to_csv(
     f'{out}/Table S8.tsv', sep='\t', index=False)
-
 res_df = read_res_df(f'{out}/res_df.tsv')
 tools = ['UPIMAPI + reCOGnizer', 'eggNOG mapper', 'mantis', 'Prokka', 'DFAST']
 table_s_9 = []

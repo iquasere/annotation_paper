@@ -136,3 +136,7 @@ def is_same(list1, list2):
     if list1 == [''] or list2 == ['']:
         return False
     return jaccard_index(list1, list2) > 0.5
+
+
+def get_fasta_ids(filename):
+    return [line[1:-1] for line in open(filename) if line.startswith('>')]

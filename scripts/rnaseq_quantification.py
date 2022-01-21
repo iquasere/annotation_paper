@@ -37,21 +37,47 @@ def perform_alignment(reference, reads, basename, threads=1):
 
 
 out = 'ann_paper'
-readcounts = pd.DataFrame(columns=['name'])
-for letter in ['a', 'b', 'c']:
+
+
+def triplicates_quantification():
+    readcounts = pd.DataFrame(columns=['name'])
+    for letter in ['a', 'b', 'c']:
+        for n in [0.01, 1, 100]:
+            perform_alignment(
+                f'{out}/transcriptomes.fasta',
+                [f'{out}/simulated/rna/Preprocess/Trimmomatic/quality_trimmed_rnaseq_{letter}{n}_{fr}_paired.fq'
+                 for fr in ['forward', 'reverse']],
+                f'{out}/alignments/mt_{n}{letter}', threads=15)
+            readcounts = pd.merge(
+                readcounts, pd.read_csv(
+                    f'{out}/alignments/mt_{n}{letter}.readcounts', sep='\t', header=None,
+                    names=['name', f'mt_{n}{letter}']), how='outer', on='name')
+    mt_cols = [f'mt_{n}{letter}' for letter in ['a', 'b', 'c'] for n in [0.01, 1, 100]]
+    readcounts[mt_cols] = readcounts[mt_cols].fillna(value=0.0).astype(int)
+    factors = pd.read_csv('factors.txt', sep='\n', header=None)
+    readcounts[mt_cols] = (readcounts[mt_cols] / factors[0].tolist()).astype(int)
     for n in [0.01, 1, 100]:
+        readcounts[f'mt_{n}'] = readcounts[[f'mt_{n}{l}' for l in ['a', 'b', 'c']]].mean(axis=1)
+    readcounts[[f'mt_{n}' for n in [0.01, 1, 100]]] = readcounts[[f'mt_{n}' for n in [0.01, 1, 100]]].astype(int)
+    readcounts[['name'] + [f'mt_{n}' for n in [0.01, 1, 100]]].to_csv(f'{out}/readcounts.tsv', sep='\t', index=False)
+
+
+def lipids_quantification():
+    readcounts = pd.DataFrame(columns=['name'])
+    for condition in ['1', '2']:
         perform_alignment(
             f'{out}/transcriptomes.fasta',
-            [f'{out}/simulated/rna/Preprocess/Trimmomatic/quality_trimmed_rnaseq_{letter}{n}_{fr}_paired.fq'
+            [f'{out}/simulated/lipids/Preprocess/Trimmomatic/quality_trimmed_rnaseq_{condition}_{fr}_paired.fq'
              for fr in ['forward', 'reverse']],
-            f'{out}/alignments/mt_{n}{letter}', threads=15)
+            f'{out}/alignments/mt_{condition}', threads=15)
         readcounts = pd.merge(
             readcounts, pd.read_csv(
-                f'{out}/alignments/mt_{n}{letter}.readcounts', sep='\t', header=None,
-                names=['name', f'mt_{n}{letter}']), how='outer', on='name')
-mt_cols = [f'mt_{n}{letter}' for letter in ['a', 'b', 'c'] for n in [0.01, 1, 100]]
-readcounts[mt_cols] = readcounts[mt_cols].fillna(value=0.0)
-for n in [0.01, 1, 100]:
-    readcounts[f'mt_{n}'] = readcounts[[f'mt_{n}{l}' for l in ['a', 'b', 'c']]].mean(axis=1)
-readcounts[[f'mt_{n}' for n in [0.01, 1, 100]]] = readcounts[[f'mt_{n}' for n in [0.01, 1, 100]]].astype(int)
-readcounts[['name'] + [f'mt_{n}' for n in [0.01, 1, 100]]].to_csv(f'{out}/readcounts.tsv', sep='\t', index=False)
+                f'{out}/alignments/mt_{condition}.readcounts', sep='\t', header=None,
+                names=['name', f'mt_{condition}']), how='outer', on='name')
+    mt_cols = [f'mt_{condition}' for condition in ['1', '2']]
+    readcounts[mt_cols] = readcounts[mt_cols].fillna(value=0.0).astype(int)
+    readcounts.to_csv(f'{out}/readcounts.tsv', sep='\t', index=False)
+
+
+triplicates_quantification()
+lipids_quantification()

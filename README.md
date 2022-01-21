@@ -56,20 +56,8 @@ python mantis run_mantis -i ann_paper/genes_trimmed.fasta -o ann_paper/mantis_ge
 conda deactivate
 dfast_file_downloader.py --protein dfast --dbroot resources_directory/dfast
 dfast_file_downloader.py --cdd Cog --hmm TIGR --dbroot resources_directory/dfast
-dfast -g ann_paper/genomes.fasta -o ann_paper/dfast_genomes --cpu 15 --force --dbroot resources_directory/dfast
+dfast -g ann_paper/genomes.fasta -o ann_paper/dfast_genomes --cpu 15 --dbroot resources_directory/dfast
 prokka --outdir ann_paper/prokka_genomes --metagenome --cpus 15 ann_paper/genomes.fasta
-```
- 
-## Run tools for metagenome and metatranscriptome
-
-```
-python MOSCA/workflow/scripts/preprocess.py -i Datasets/4478-DNA-S1613-MiSeqKapa/4478-DNA-S1613-MiSeqKapa_R1.fastq.gz,Datasets/4478-DNA-S1613-MiSeqKapa/4478-DNA-S1613-MiSeqKapa_R2.fastq.gz -t 15 -d dna -o ann_paper/metagenome/Preprocess -rd resources_directory --avgqual 20 --minlen 100
-python MOSCA/workflow/scripts/preprocess.py -i Datasets/4478-DNA-S1616-MiSeqKapa/4478-DNA-S1616-MiSeqKapa_R1.fastq.gz,Datasets/4478-DNA-S1616-MiSeqKapa/4478-DNA-S1616-MiSeqKapa_R2.fastq.gz -t 15 -d dna -o ann_paper/metagenome/Preprocess -rd resources_directory --avgqual 20 --minlen 100
-python MOSCA/workflow/scripts/preprocess.py -i Datasets/4478-DNA-S1618-MiSeqKapa/4478-DNA-S1618-MiSeqKapa_R1.fastq.gz,Datasets/4478-DNA-S1618-MiSeqKapa/4478-DNA-S1618-MiSeqKapa_R2.fastq.gz -t 15 -d dna -o ann_paper/metagenome/Preprocess -rd resources_directory --avgqual 20 --minlen 100
-python MOSCA/workflow/scripts/preprocess.py -i Datasets/4478-DNA-S1611-MiSeqKapa/4478-R1-1-MiSeqKapa_R1.fastq.gz,Datasets/4478-DNA-S1611-MiSeqKapa/4478-R1-1-MiSeqKapa_R2.fastq.gz -t 15 -d mrna -o ann_paper/metagenome/Preprocess -rd resources_directory --avgqual 20 --minlen 100
-python MOSCA/workflow/scripts/preprocess.py -i Datasets/4478-DNA-S1613-MiSeqKapa/4478-R2-1-MiSeqKapa_R1.fastq.gz,Datasets/4478-DNA-S1613-MiSeqKapa/4478-R2-1-MiSeqKapa_R2.fastq.gz -t 15 -d mrna -o ann_paper/metagenome/Preprocess -rd resources_directory --avgqual 20 --minlen 100
-python MOSCA/workflow/scripts/preprocess.py -i Datasets/4478-DNA-S1616-MiSeqKapa/4478-R3-1-MiSeqKapa_R1.fastq.gz,Datasets/4478-DNA-S1616-MiSeqKapa/4478-R3-1-MiSeqKapa_R2.fastq.gz -t 15 -d mrna -o ann_paper/metagenome/Preprocess -rd resources_directory --avgqual 20 --minlen 100
-python MOSCA/workflow/scripts/preprocess.py -i Datasets/4478-DNA-S1618-MiSeqKapa/4478-R4-1-MiSeqKapa_R1.fastq.gz,Datasets/4478-DNA-S1618-MiSeqKapa/4478-R4-1-MiSeqKapa_R2.fastq.gz -t 15 -d mrna -o ann_paper/metagenome/Preprocess -rd resources_directory --avgqual 20 --minlen 100
 ```
  
 ## Results analysis
@@ -105,7 +93,7 @@ awk 'BEGIN{FS="\t"}{print $10}' annotation_paper/assets/simulated_taxa.tsv | tai
 wget -i ann_paper/assets/transcriptomes_links.txt -P ann_paper
 gunzip ann_paper/*.gz
 bash annotation_paper/scripts/clean_transcriptomes.bash
-cat ann_paper/*.cds.all.fa >> ann_paper/transcriptomes.fasta
+cat ann_paper/*.cds.all.fa > ann_paper/transcriptomes.fasta
 mkdir ann_paper/simulated ann_paper/simulated/rna 
 grep '>' ann_paper/transcriptomes.fasta | awk '{print substr($0, 2)}' > ann_paper/ids_to_map.txt
 ```
@@ -123,7 +111,8 @@ python annotation_paper/scripts/rnaseq_quantification.py
 
 ```
 python annotation_paper/scripts/prepare4keggcharter.py
-keggcharter.py -f ann_paper/keggcharter_input.tsv -o ann_paper/keggcharter_genomes -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -tcol mt_0.01,mt_1,mt_100 -iq
+keggcharter.py -f ann_paper/keggcharter_input.tsv -o ann_paper/keggcharter_genomes -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -tcol mt_0.01,mt_1,mt_100 -iq -not 7
+keggcharter.py -f ann_paper/keggcharter_input.tsv -o ann_paper/keggcharter_lipids -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -tcol mt_1,mt_2 -iq -not 7 -mm 00071
 ```
 
 ## Metagenomics analysis
