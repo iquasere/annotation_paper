@@ -80,4 +80,4 @@ def lipids_quantification():
 
 
 triplicates_quantification()
-lipids_quantification()
+#lipids_quantification()

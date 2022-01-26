@@ -160,25 +160,54 @@ for fide in ['COG', 'EC number']:
         unique_matches = len([
             df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
                 df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
-            ) == 0]); print(unique_matches)
+            ) == 0])
         matches_with_1 = len([
             df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
                 df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
-            ) == 1]); print(matches_with_1)
+            ) == 1])
         matches_with_2 = len([
             df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
                 df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
-            ) == 2]); print(matches_with_2)
+            ) == 2])
         matches_with_3 = len([
             df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
                 df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
-            ) == 3]); print(matches_with_3)
+            ) == 3])
         matches_with_all = len([
             df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
                 df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
-            ) == 4]); print(matches_with_all)
+            ) == 4])
         table_s_9.append(
             {'Idenfitier': fide, 'Tool': tool, 'Unique matches': unique_matches, 'Matches with 1 tool': matches_with_1,
              'Matches with 2 tools': matches_with_2, 'Matches with 3 tools': matches_with_3,
              'Matches with all': matches_with_all, '# of assignments': len(df)})
 pd.DataFrame(table_s_9).to_excel(f'{out}/table_s_10.xlsx', index=False)
+
+
+# Figure S2
+tools = ['UPIMAPI + reCOGnizer', 'eggNOG mapper', 'mantis']
+for fide in ['COG', 'EC number']:
+    print(fide)
+    for tool in tools:
+        other_tools = [ftool for ftool in tools if ftool != tool]
+        print(tool)
+        df = res_df[res_df[f'{fide} ({tool})'].apply(lambda x: x != [''])].reset_index()
+        unique_matches = len([
+            df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
+                df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
+            ) == 0])
+        print(f'unique: {unique_matches}')
+        for other_tool in other_tools:
+            other_other_tool = [otool for otool in other_tools if otool != other_tool]
+            matches_with_tool = len([
+                df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
+                    df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i])]
+                ) == 1 and sum([is_same(
+                    df[f'{fide} ({tool})'][i], df[f'{fide} ({other_other_tool[0]})'][i])]) == 0])
+            print(f'{tool} with {other_tool}: {matches_with_tool}')
+        matches_with_all = len([
+            df[f'{fide} ({tool})'][i] for i in range(len(df)) if sum([is_same(
+                df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
+            ) == 2])
+        print(f'matches with all: {matches_with_all}')
+

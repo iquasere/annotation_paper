@@ -1,13 +1,16 @@
-# UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for fast functional annotation and visualization of (meta)-omics datasets 
+# UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets 
 
-![Graphical Abstract](assets/graphical_abstract.jpg "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for fast functional annotation and visualization of (meta)-omics datasets ")
+![Graphical Abstract](assets/graphical_abstract.jpg "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets ")
 
-This repository was created to store the scripts used in the publication "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for fast functional annotation and visualization of (meta)-omics datasets 
-". These scripts run the following steps:
+This repository was created to store the scripts used in the publication "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets". Main chapters are:
 1. [Obtention of datasets](https://github.com/iquasere/annotation_paper#obtention-of-datasets)
 2. [Installation of tools](https://github.com/iquasere/annotation_paper#installation-of-tools)
-3. [Execution of tools](https://github.com/iquasere/annotation_paper#execution-of-tools)
+3. [Run tools for reference genomes](https://github.com/iquasere/annotation_paper#run-tools-for-reference-genomes)
 4. [Results analysis](https://github.com/iquasere/annotation_paper#results-analysis)
+5. [RNA-Seq simulation and quantification into readcounts](https://github.com/iquasere/annotation_paper#rna-seq-simulation-and-quantification-into-readcounts)
+6. [Metagenomics analysis](https://github.com/iquasere/annotation_paper#metagenomics-analysis)
+7. [Run KEGGCharter](https://github.com/iquasere/annotation_paper#run-keggcharter)
+8. [Publication](https://github.com/iquasere/annotation_paper#publication)
 
 ## Obtention of datasets
 
@@ -47,8 +50,8 @@ conda activate ann_paper
 prodigal -i ann_paper/genomes.fasta -a ann_paper/genes.fasta -o ann_paper/prodigal_out.txt
 grep '>' ann_paper/genes.fasta | awk '{print substr($1, 2)"\t"$3"\t"$5}' > ann_paper/genes.tsv
 awk '{print $1}' ann_paper/genes.fasta | sed 's/*//' > ann_paper/genes_trimmed.fasta
-upimapi.py -i ann_paper/genes_trimmed.fasta -o ann_paper/upimapi_genomes -rd resources_directory --evalue 0.1 -mts 20 -db uniprot -t 15
-recognizer.py -f ann_paper/genes_trimmed.fasta -o ann_paper/recognizer_genomes -rd resources_directory -mts 20 -t 15
+upimapi.py -i ann_paper/genes_trimmed.fasta -o ann_paper/upimapi_genomes -rd resources_directory -db uniprot -t 15
+recognizer.py -f ann_paper/genes_trimmed.fasta -o ann_paper/recognizer_genomes -rd resources_directory -t 15
 mkdir ann_paper/eggnog_mapper_genomes
 emapper.py -i ann_paper/genes_trimmed.fasta -o ann_paper/eggnog_mapper_genomes/eggnog_results --cpu 15 --data_dir ann_paper/eggnog_data
 conda activate mantis_env
@@ -86,7 +89,7 @@ Finally, the main show: benchmarking the tools against each other.
 python annotation_paper/scripts/tools_benchmark.py
 ```
 
-## RNA-Seq simulation and quantification into an expression table
+## RNA-Seq simulation and quantification into readcounts
 
 ```
 awk 'BEGIN{FS="\t"}{print $10}' annotation_paper/assets/simulated_taxa.tsv | tail -n +2 > ann_paper/assets/transcriptomes_links.txt 
@@ -107,14 +110,6 @@ mkdir ann_paper/alignments
 python annotation_paper/scripts/rnaseq_quantification.py
 ```
 
-## Run KEGGCharter
-
-```
-python annotation_paper/scripts/prepare4keggcharter.py
-keggcharter.py -f ann_paper/keggcharter_input.tsv -o ann_paper/keggcharter_genomes -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -tcol mt_0.01,mt_1,mt_100 -iq -not 7
-keggcharter.py -f ann_paper/keggcharter_input.tsv -o ann_paper/keggcharter_lipids -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -tcol mt_1,mt_2 -iq -not 7 -mm 00071
-```
-
 ## Metagenomics analysis
 
 ```
@@ -131,6 +126,24 @@ awk '{if ($0 ~ /^>/){split($0, a, "_"); print a[1]"_"a[2]} else print $0}' ann_p
 prokka --outdir ann_paper/prokka_metagenome --metagenome --cpus 15 ann_paper/Assembly_MG/prokka_scaffolds.fasta
 dfast -g ann_paper/Assembly_MG/scaffolds.fasta -o ann_paper/dfast_metagenome --cpu 15 --force --dbroot resources_directory/dfast
 grep 'ID=' ann_paper/dfast_metagenome/genome.gff > ann_paper/dfast_metagenome/genome_trimmed.gff
+```
+
+## Run KEGGCharter
+
+```
+python annotation_paper/scripts/prepare4keggcharter.py
+keggcharter.py -f ann_paper/keggcharter_input.tsv -o ann_paper/keggcharter_genomes -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -tcol mt_1,mt_100 -iq -not 7
+keggcharter.py -f ann_paper/upimapi_metagenome/UPIMAPI_results.tsv -o ann_paper/keggcharter_genomes -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -iq
+```
+
+## Submit assembly to webin
+
+```
+grep '>' ann_paper/Assembly_MG/scaffolds.fasta | awk 'BEGIN{FS="_";n=0;sum=0}{n+=1;sum+=$6}END{print sum/n}'
+mamba install -c conda-forge -c bioconda ena-webin-cli -y
+mkdir ann_paper/EBIsubmission
+gunzip ann_paper/Assembly_MG/scaffolds.fasta
+ena-webin-cli -context genome -userName username -password 'password' -manifest annotation_paper/assets/manifest.xml -outputDir ann_paper/EBIsubmission -inputDir ann_paper/Assembly_MG -submit
 ```
 
 ## Publication

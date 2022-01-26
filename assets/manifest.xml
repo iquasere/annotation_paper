@@ -1,0 +1,8 @@
+STUDY	PRJEB50269
+SAMPLE	AS_ST
+NAME	scaffolds_ST
+ASSEMBLY_TYPE	primary metagenome
+COVERAGE	2.21954
+PROGRAM	MetaSPAdes
+PLATFORM	Miseq paired end 2x250bp
+FASTA	scaffolds.fasta.gz
