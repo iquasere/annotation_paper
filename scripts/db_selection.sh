@@ -8,20 +8,20 @@ awk 'BEGIN {
   while (getline < "'"$IDS"'"){
     i+=1;
     ids[$0]=i;
+    }
+    close("'"$IDS"'");
   }
-  close("'"$IDS"'");}
   {
     if ($0 in ids){
-	print $0" in IDs!"
+	    print $0" in IDs!"
       getline;
       while ($0 !~ /^>/){
         getline;
       }
-	  if (!($0 in ids)){
-		print $0 > "'"$OUTFILE"'";
-	  }
+	    if (!($0 in ids)){
+		    print $0 > "'"$OUTFILE"'";
+	    }
     } else {
       print $0 > "'"$OUTFILE"'";
     }
-  }
-}' $UNIPROT
+  }' $UNIPROT
