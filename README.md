@@ -41,6 +41,18 @@ conda activate mantis_env
 python mantis setup_databases
 mv annotation_paper/assets/MANTIS.config mantis/MANTIS.config
 git clone https://github.com/iquasere/MOSCA.git
+wget https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_trembl.fasta.gz
+zcat uniprot_*.fasta.gz > resources_directory/uniprot.fasta
+awk '{ print $1 }' resources_directory/uniprot.fasta > tmp.fa | mv tmp.fa resources_directory/uniprot.fasta
+# uniprot had 225578953 sequences, so divided by 15 cores
+awk -v size=15038597 -v pre=resources_directory/split_uniprot -v pad=2 '
+   /^>/ { n++; if (n % size == 1) { close(fname); fname = sprintf("%s.%0" pad "d", pre, n) } }
+   { print >> fname }
+' resources_directory/uniprot.fasta
+python annotation_paper/scripts/download_proteomes.py
+awk '{print $1}' ann_paper/proteomes.fasta > tmp.fasta && mv tmp.fasta ann_paper/proteomes.fasta
+grep '>' ann_paper/proteomes.fasta > ann_paper/ids.txt
+python annotation_paper/scripts/uniprot_selection.py
 ```
 
 ## Run tools for reference genomes
@@ -67,8 +79,6 @@ prokka --outdir ann_paper/prokka_genomes --metagenome --cpus 15 ann_paper/genome
 
 First, download the proteomes corresponding to the reference genomes. Clean the proteomes, build DMND database from them, and align genes called with Prodigal to that database, obtaining the most likely identification of each called gene.
 ```
-python annotation_paper/scripts/download_proteomes.py
-awk '{print $1}' ann_paper/proteomes.fasta > tmp.fasta && mv tmp.fasta ann_paper/proteomes.fasta
 # Assign IDs to genes identified with Prokka
 diamond makedb --in ann_paper/proteomes.fasta -d ann_paper/proteomes.dmnd
 diamond blastp -d ann_paper/proteomes.dmnd -q ann_paper/genes_trimmed.fasta -o ann_paper/genes.blast --very-sensitive -p 15
@@ -95,7 +105,7 @@ python annotation_paper/scripts/tools_benchmark.py
 awk 'BEGIN{FS="\t"}{print $10}' annotation_paper/assets/simulated_taxa.tsv | tail -n +2 > ann_paper/assets/transcriptomes_links.txt 
 wget -i ann_paper/assets/transcriptomes_links.txt -P ann_paper
 gunzip ann_paper/*.gz
-bash annotation_paper/scripts/clean_transcriptomes.bash
+bash annotation_paper/scripts/clean_transcriptomes.sh
 cat ann_paper/*.cds.all.fa > ann_paper/transcriptomes.fasta
 mkdir ann_paper/simulated ann_paper/simulated/rna 
 grep '>' ann_paper/transcriptomes.fasta | awk '{print substr($0, 2)}' > ann_paper/ids_to_map.txt
