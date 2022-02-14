@@ -79,11 +79,11 @@ dfast_df.rename(
              'Cross-reference (eggNOG)': 'COG (UniProt)', 'COG': 'COG (DFAST)'}, inplace=True)
 
 # Build final analysis DF
-res_df = parse_blast(f'{out}/genes.blast')
-res_df = res_df.groupby('qseqid')[res_df.columns.tolist()[1:]].first().reset_index()
-res_df['Entry'] = res_df['sseqid'].apply(lambda x: x.split('|')[1])
+res_df = blast_consensus(f'{out}/genes.blast')
+#res_df = res_df.groupby('qseqid')[res_df.columns.tolist()[1:]].first().reset_index()
+#res_df['Entry'] = res_df['sseqid'].apply(lambda x: x.split('|')[1])
 res_df = pd.merge(res_df, uniprotinfo, on='Entry', how='left')
-res_df = pd.merge(res_df, upimapi_genomes[['Entry', 'EC number', 'Cross-reference (eggNOG)']], on='Entry', how='left')
+res_df = pd.merge(res_df, upimapi_genomes[['qseqid', 'EC number', 'Cross-reference (eggNOG)']], on='qseqid', how='left')
 res_df = pd.merge(res_df, cog_ser, left_on='qseqid', right_index=True, how='left')
 res_df = pd.merge(res_df, ecs_ser, left_on='qseqid', right_index=True, how='left')
 res_df = pd.merge(res_df, eggnog_genomes[['#query', 'EC', 'eggNOG_OGs']], left_on='qseqid', right_on='#query', how='left')
@@ -109,7 +109,7 @@ res_df = pd.merge(res_df, dfast_df[['Entry', 'EC number (DFAST)', 'COG (DFAST)']
 res_df = df_post_processing(res_df)
 quality_benchmark = []
 for fide in ['EC number', 'COG']:
-    for ftool in ['eggNOG mapper', 'mantis', 'Prokka', 'DFAST', 'UPIMAPI + reCOGnizer']:
+    for ftool in ['eggNOG mapper', 'mantis', 'Prokka', 'DFAST', 'UPIMAPI + reCOGnizer', 'UPIMAPI', 'reCOGnizer']:
         quality_benchmark = add_to_quality_benchmark(quality_benchmark, res_df, fide, ftool)
 pd.DataFrame(quality_benchmark).to_excel(f'{out}/table5.xlsx', index=False)
 write_res_df(res_df, f'{out}/res_df.tsv')

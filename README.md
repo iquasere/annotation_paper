@@ -62,7 +62,7 @@ conda activate ann_paper
 prodigal -i ann_paper/genomes.fasta -a ann_paper/genes.fasta -o ann_paper/prodigal_out.txt
 grep '>' ann_paper/genes.fasta | awk '{print substr($1, 2)"\t"$3"\t"$5}' > ann_paper/genes.tsv
 awk '{print $1}' ann_paper/genes.fasta | sed 's/*//' > ann_paper/genes_trimmed.fasta
-upimapi.py -i ann_paper/genes_trimmed.fasta -o ann_paper/upimapi_genomes -rd resources_directory -db uniprot -t 15
+upimapi.py -i ann_paper/genes_trimmed.fasta -o ann_paper/upimapi_selected -rd resources_directory -db uniprot -t 15
 recognizer.py -f ann_paper/genes_trimmed.fasta -o ann_paper/recognizer_genomes -rd resources_directory -t 15
 mkdir ann_paper/eggnog_mapper_genomes
 emapper.py -i ann_paper/genes_trimmed.fasta -o ann_paper/eggnog_mapper_genomes/eggnog_results --cpu 15 --data_dir ann_paper/eggnog_data
