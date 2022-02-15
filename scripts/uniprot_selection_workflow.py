@@ -1,8 +1,9 @@
-from multiprocessing import Pool, Manager
+import pathlib
+from multiprocessing import Pool
 from subprocess import check_output
 from tqdm import tqdm
-from paper_utils import run_pipe_command, split
-from random import choice, seed
+from paper_utils import run_pipe_command, run_command
+from random import choices, seed
 import pandas as pd
 
 
@@ -39,35 +40,11 @@ def select_uniprot(up_file, ids_file, output):
     pbar.close()
 
 
-def get_upper_taxids(taxid, tax_df):
-    if taxid == '0':
-        return []
-    taxids = []
-    while taxid != '1' and taxid != 'Taxon':
-        taxids.append(taxid)
-        taxid = tax_df.loc[taxid]['parent_taxid']
-    return taxids
-
-
-def write_lineages(taxids, taxonomy_df, output):
-    with open(output, 'w') as f:
-        for taxid in tqdm(taxids):
-            lineage = get_upper_taxids(taxid, taxonomy_df)
-            f.write(f'{taxid}\t{",".join(lineage)}\n')
-
-
-def get_lineages_multiprocessing(taxids, taxonomy_df, output, threads=15):
-    print(f'Listing all parent tax IDs for {len(taxids)} tax IDs (this may take a while, time for coffee?)')
-    taxids_groups = list(split(list(taxids), threads))
-    Pool(threads).starmap(write_lineages, [(
-            taxids_groups[i], taxonomy_df, f'{output}/taxonomy_{i}.tsv') for i in range(len(taxids_groups))])
-
-
-def reestructure_taxonomy(tax_tsv, output):
-    tax_tsv = pd.read_csv(tax_tsv, sep='\t')
-    taxids = tax_tsv[tax_tsv['rank'] == 'Species']['taxid']
-    tax_tsv.set_index('taxid', inplace=True)
-    get_lineages_multiprocessing(taxids, tax_tsv, out)
+def download_genome(entry, out_dir):
+    link = f'http://ftp.ensemblgenomes.org/pub/bacteria/current/fasta/{"_".join(entry["core_db"].split("_")[:3])}/' \
+           f'{entry["species"]}/dna/{entry["species"].capitalize()}.{entry["assembly"].replace(" ", "_").replace("#", "_")}' \
+           f'.dna.toplevel.fa.gz'
+    run_command(f'wget {link} -O {out_dir}/{"_".join(entry["name"].split()[:-1])}.fna.gz')
 
 
 out = 'ann_paper'
@@ -79,9 +56,26 @@ with Pool(processes=15) as p:
         for i in range(15)])
 
 
-# 2nd and 3rd iterations
-for i in range(2):
+run_command(f'wget http://ftp.ensemblgenomes.org/pub/bacteria/current/species_EnsemblBacteria.txt -P {out}')
+prok_df = pd.read_csv(
+    'species_EnsemblBacteria.txt', sep='\t', encoding='latin-1', skiprows=1, index_col=False,
+    names=['name', 'species', 'division', 'taxonomy_id', 'assembly', 'assembly_accession', 'genebuild', 'variation',
+           'microarray', 'pan_compara', 'peptide_compara', 'genome_alignments', 'other_alignments', 'core_db',
+           'species_id'])
 
-    p.starmap(select_uniprot, [
-        (f'resources_directory/split_uniprot.{dbs[i]}', 'ann_paper/ids.txt', f'ann_paper/uniprot_{i}.fasta')
-        for i in range(15)])
+seed(0)
+first_species = choices(prok_df['name'].tolist(), k=8)
+first_species.remove('Halomonas sp. Choline-3u-9 (GCA_002836495)')  # Halomonas sp. Choline-3u-9 is not present in UniProt taxonomy
+# Enterococcus faecalis EnGen0354 was selected from the "Enterococcus faecalis"
+seed(1)
+second_species = choices(prok_df['name'].tolist(), k=7)
+# Serratia fonticola AU-P3(3) was used instead of Serratia fonticola str. 5l
+# KLEP7 was selected from the "Klebsiella pneumoniae"
+# HISS2 was selected from the "Histophilus somni 2336"
+# Neisseria gonorrhoeae DGI2 was selected from the Neisseria gonorrhoeae
+pathlib.Path(f'{out}/first_group').mkdir(exist_ok=True, parents=True)
+pathlib.Path(f'{out}/second_group').mkdir(exist_ok=True, parents=True)
+for species in first_species:
+    download_genome(prok_df[prok_df['name'] == species].reset_index().iloc[0], f'{out}/first_group')
+for species in second_species:
+    download_genome(prok_df[prok_df['name'] == species].reset_index().iloc[0], f'{out}/second_group')
