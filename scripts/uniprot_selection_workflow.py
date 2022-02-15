@@ -49,7 +49,7 @@ def download_genome(entry, out_dir):
 
 out = 'ann_paper'
 
-# 1st iteration
+# Iteration zero
 with Pool(processes=15) as p:
     p.starmap(select_uniprot, [
         (f'resources_directory/split_uniprot.{dbs[i]}', 'ann_paper/ids.txt', f'ann_paper/uniprot_{i}.fasta')
@@ -79,3 +79,16 @@ for species in first_species:
     download_genome(prok_df[prok_df['name'] == species].reset_index().iloc[0], f'{out}/first_group')
 for species in second_species:
     download_genome(prok_df[prok_df['name'] == species].reset_index().iloc[0], f'{out}/second_group')
+
+
+run_pipe_command("awk '{print $1}' ann_paper/first_group/*.faa > ann_paper/first_group/proteome.faa")
+run_pipe_command('grep ">" ann_paper/first_group/proteome.faa > ann_paper/first_group/ids.txt')
+run_pipe_command("awk '{print $1}' ann_paper/second_group/*.faa > ann_paper/second_group/proteome.faa")
+run_pipe_command('grep ">" ann_paper/second_group/proteome.faa > ann_paper/second_group/ids.txt')
+
+# first iteration
+with Pool(processes=15) as p:
+    p.starmap(select_uniprot, [
+        (f'resources_directory/split_uniprot.{dbs[i]}', 'ann_paper/first_group/ids.txt',
+         f'ann_paper/first_group/uniprot_{i}.fasta') for i in range(15)])
+
