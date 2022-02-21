@@ -79,8 +79,6 @@ def blast_consensus(alignment_file):
     query_to_ref = {}
     ref_to_query = {}
     res = {}
-    if not os.path.exists(alignment_file):
-        return res
     with open(alignment_file) as file:
         line = file.readline()
         while line:

@@ -43,7 +43,8 @@ mv annotation_paper/assets/MANTIS.config mantis/MANTIS.config
 git clone https://github.com/iquasere/MOSCA.git
 wget https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_trembl.fasta.gz
 zcat uniprot_*.fasta.gz > resources_directory/uniprot.fasta
-awk '{ print $1 }' resources_directory/uniprot.fasta > tmp.fa | mv tmp.fa resources_directory/uniprot.fasta
+rm uniprot_*.fasta.gz
+awk '{ print $1 }' resources_directory/uniprot.fasta > tmp.fa & mv tmp.fa resources_directory/uniprot.fasta
 # uniprot had 225578953 sequences, so divided by 15 cores
 awk -v size=15038597 -v pre=resources_directory/split_uniprot -v pad=2 '
    /^>/ { n++; if (n % size == 1) { close(fname); fname = sprintf("%s.%0" pad "d", pre, n) } }
@@ -60,7 +61,6 @@ python annotation_paper/scripts/uniprot_selection.py
 ```
 conda activate ann_paper
 prodigal -i ann_paper/genomes.fasta -a ann_paper/genes.fasta -o ann_paper/prodigal_out.txt
-grep '>' ann_paper/genes.fasta | awk '{print substr($1, 2)"\t"$3"\t"$5}' > ann_paper/genes.tsv
 awk '{print $1}' ann_paper/genes.fasta | sed 's/*//' > ann_paper/genes_trimmed.fasta
 upimapi.py -i ann_paper/genes_trimmed.fasta -o ann_paper/upimapi_selected -rd resources_directory -db uniprot -t 15
 recognizer.py -f ann_paper/genes_trimmed.fasta -o ann_paper/recognizer_genomes -rd resources_directory -t 15
@@ -73,6 +73,43 @@ dfast_file_downloader.py --protein dfast --dbroot resources_directory/dfast
 dfast_file_downloader.py --cdd Cog --hmm TIGR --dbroot resources_directory/dfast
 dfast -g ann_paper/genomes.fasta -o ann_paper/dfast_genomes --cpu 15 --dbroot resources_directory/dfast
 prokka --outdir ann_paper/prokka_genomes --metagenome --cpus 15 ann_paper/genomes.fasta
+```
+
+## Run two other iterations
+
+Running for two other iterations, to provide two other examples, where the query is independent of the database. First, get reference genomes to serve as query, and reference proteomes to select in UniProt.
+```
+python annotation_paper/scripts/uniprot_selection_workflow.py
+```
+Then, run tools for the two examples, given as ```first_group``` and ```second_group```.
+```
+prodigal -i ann_paper/first_group/genomes.fasta -a ann_paper/first_group/genes.fasta
+awk '{print $1}' ann_paper/first_group/genes.fasta | sed 's/*//' > ann_paper/first_group/genes_trimmed.fasta
+upimapi.py -i ann_paper/first_group/genes_trimmed.fasta -o ann_paper/first_group/upimapi_selected -rd resources_directory -db uniprot -t 15
+recognizer.py -f ann_paper/first_group/genes_trimmed.fasta -o ann_paper/first_group/recognizer_genomes -rd resources_directory -t 15
+mkdir ann_paper/first_group/eggnog_mapper_genomes
+emapper.py -i ann_paper/first_group/genes_trimmed.fasta -o ann_paper/first_group/eggnog_mapper_genomes/eggnog_results --cpu 15 --data_dir ann_paper/eggnog_data
+conda activate mantis_env
+python mantis run_mantis -i ann_paper/first_group/genes_trimmed.fasta -o ann_paper/first_group/mantis_genomes -c 15
+conda deactivate
+dfast -g ann_paper/first_group/genomes.fasta -o ann_paper/first_group/dfast_genomes --cpu 15 --dbroot resources_directory/dfast
+cat ann_paper/first_group/genomes.fasta | tr ' ' '_' > ann_paper/first_group/genomes_fixed.fasta
+prokka --outdir ann_paper/first_group/prokka_genomes --metagenome --cpus 15 --centre X --compliant ann_paper/first_group/genomes_fixed.fasta
+
+cat ann_paper/second_group/*.fna > ann_paper/second_group/genomes.fasta
+cat ann_paper/second_group/uniprot_*.fasta > resources_directory/uniprot.fasta
+prodigal -i ann_paper/second_group/genomes.fasta -a ann_paper/second_group/genes.fasta -p meta
+awk '{print $1}' ann_paper/second_group/genes.fasta | sed 's/*//' > ann_paper/second_group/genes_trimmed.fasta
+upimapi.py -i ann_paper/second_group/genes_trimmed.fasta -o ann_paper/second_group/upimapi_selected -rd resources_directory -db uniprot -t 15
+recognizer.py -f ann_paper/second_group/genes_trimmed.fasta -o ann_paper/second_group/recognizer_genomes -rd resources_directory -t 15
+mkdir ann_paper/second_group/eggnog_mapper_genomes
+emapper.py -i ann_paper/second_group/genes_trimmed.fasta -o ann_paper/second_group/eggnog_mapper_genomes/eggnog_results --cpu 15 --data_dir ann_paper/eggnog_data
+conda activate mantis_env
+python mantis run_mantis -i ann_paper/second_group/genes_trimmed.fasta -o ann_paper/second_group/mantis_genomes -c 15
+conda deactivate
+dfast -g ann_paper/second_group/genomes.fasta -o ann_paper/second_group/dfast_genomes --cpu 15 --dbroot resources_directory/dfast
+cat ann_paper/second_group/genomes.fasta | tr ' ' '_' > ann_paper/second_group/genomes_fixed.fasta
+prokka --outdir ann_paper/second_group/prokka_genomes --metagenome --cpus 15 --centre X --compliant ann_paper/second_group/genomes_fixed.fasta
 ```
  
 ## Results analysis
@@ -87,8 +124,30 @@ diamond blastp -d ann_paper/proteomes.dmnd -q ann_paper/prokka_genomes/PROKKA_01
 awk '{print $1}' ann_paper/dfast_genomes/protein.faa > tmp.faa | mv tmp.faa ann_paper/dfast_genomes/protein.faa
 diamond blastp -d ann_paper/proteomes.dmnd -q ann_paper/dfast_genomes/protein.faa -o ann_paper/dfast_genomes/protein.blast --very-sensitive -p 15
 # get information for all IDs from the proteomes
-grep '>' ann_paper/proteomes.fasta | awk '{print substr($0, 2)}' | tr '\n' ',' | sed 's/.$//' | upimapi.py -ot ann_paper/uniprotinfo.tsv --no-annotation --no-local-mapping -rd resources_directory -cols "Entry&Entry name&EC number" -dbs "Conserved Domains Database&Pfam protein domain database&TIGRFAMs; a protein family database&Simple Modular Architecture Research Tool; a protein domain database&evolutionary genealogy of genes: Non-supervised Orthologous Groups"
+grep '>' ann_paper/proteomes.fasta | awk '{print substr($0, 2)}' | tr '\n' ',' | sed 's/.$//' | upimapi.py -ot ann_paper/uniprotinfo.tsv --no-annotation -rd resources_directory -cols "Entry&Entry name&EC number" -dbs "Conserved Domains Database&Pfam protein domain database&TIGRFAMs; a protein family database&Simple Modular Architecture Research Tool; a protein domain database&evolutionary genealogy of genes: Non-supervised Orthologous Groups"
 grep 'ID=' ann_paper/dfast_genomes/genome.gff > ann_paper/dfast_genomes/genome_trimmed.gff
+
+diamond makedb --in ann_paper/first_group/proteomes.fasta -d ann_paper/first_group/proteomes.dmnd
+diamond blastp -d ann_paper/first_group/proteomes.dmnd -q ann_paper/first_group/genes_trimmed.fasta -o ann_paper/first_group/genes.blast --very-sensitive -p 15
+awk '{print $1}' ann_paper/first_group/prokka_genomes/PROKKA_02172022.faa > ann_paper/first_group/prokka_genomes/PROKKA_02172022_trimmed.faa
+diamond blastp -d ann_paper/first_group/proteomes.dmnd -q ann_paper/first_group/prokka_genomes/PROKKA_02172022_trimmed.faa -o ann_paper/first_group/prokka_genomes/PROKKA_02172022.blast --very-sensitive -p 15
+awk '{print $1}' ann_paper/first_group/dfast_genomes/protein.faa > ann_paper/first_group/dfast_genomes/protein_trimmed.faa
+diamond blastp -d ann_paper/first_group/proteomes.dmnd -q ann_paper/first_group/dfast_genomes/protein_trimmed.faa -o ann_paper/first_group/dfast_genomes/protein.blast --very-sensitive -p 15
+# get information for all IDs from the proteomes
+grep '>' ann_paper/first_group/proteomes.fasta | awk '{print substr($0, 2)}' | tr '\n' ',' | sed 's/.$//' | upimapi.py -ot ann_paper/uniprotinfo.tsv --no-annotation -rd resources_directory -cols "Entry&Entry name&EC number" -dbs "Conserved Domains Database&Pfam protein domain database&TIGRFAMs; a protein family database&Simple Modular Architecture Research Tool; a protein domain database&evolutionary genealogy of genes: Non-supervised Orthologous Groups"
+grep 'ID=' ann_paper/first_group/dfast_genomes/genome.gff > ann_paper/first_group/dfast_genomes/genome_trimmed.gff
+
+diamond makedb --in ann_paper/second_group/proteomes.fasta -d ann_paper/second_group/proteomes.dmnd
+diamond blastp -d ann_paper/second_group/proteomes.dmnd -q ann_paper/second_group/genes_trimmed.fasta -o ann_paper/second_group/genes.blast --very-sensitive -p 15
+awk '{print $1}' ann_paper/second_group/prokka_genomes/PROKKA_02192022.faa > tmp.faa
+mv tmp.faa ann_paper/prokka_genomes/second_group/PROKKA_02192022.faa
+diamond blastp -d ann_paper/second_group/proteomes.dmnd -q ann_paper/second_group/prokka_genomes/PROKKA_02192022.faa -o ann_paper/second_group/prokka_genomes/PROKKA_02192022.blast --very-sensitive -p 15
+awk '{print $1}' ann_paper/second_group/dfast_genomes/protein.faa > tmp.faa
+mv tmp.faa ann_paper/second_group/dfast_genomes/protein.faa
+diamond blastp -d ann_paper/second_group/proteomes.dmnd -q ann_paper/second_group/dfast_genomes/protein.faa -o ann_paper/second_group/dfast_genomes/protein.blast --very-sensitive -p 15
+# get information for all IDs from the proteomes
+grep '>' ann_paper/second_group/proteomes.fasta | awk '{print substr($0, 2)}' | tr '\n' ',' | sed 's/.$//' | upimapi.py -ot ann_paper/second_group/uniprotinfo.tsv --no-annotation -rd resources_directory -cols "Entry&Entry name&EC number" -dbs "Conserved Domains Database&Pfam protein domain database&TIGRFAMs; a protein family database&Simple Modular Architecture Research Tool; a protein domain database&evolutionary genealogy of genes: Non-supervised Orthologous Groups"
+grep 'ID=' ann_paper/second_group/dfast_genomes/genome.gff > ann_paper/second_group/dfast_genomes/genome_trimmed.gff
 ```
 Then, different evalues are tested for each tool.
 ```
