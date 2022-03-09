@@ -120,6 +120,13 @@ real_df['ID (UPIMAPI + reCOGnizer)'] = real_df['ID (UPIMAPI)'].combine_first(rea
 real_df['EC number (UPIMAPI + reCOGnizer)'] = real_df['EC number (UPIMAPI)'].combine_first(real_df['EC number (reCOGnizer)'])
 real_df['COG (UPIMAPI + reCOGnizer)'] = real_df['COG (UPIMAPI)'].combine_first(real_df['COG (reCOGnizer)'])
 
+iterations = ['', '/first_group', '/second_group', '/third_group', '/fourth_group']
+table5 = pd.ExcelWriter(f'{out}/table5_all.xlsx', engine='xlsxwriter')
+for i in range(len(iterations)):
+    df = pd.read_excel(f'{out}{iterations[i]}/table5.xlsx')
+    df.to_excel(table5, sheet_name=str(i), index=False)
+table5.save()
+
 table6 = []
 for tool in ['UPIMAPI + reCOGnizer', 'Mantis', 'eggNOG mapper']:
     table6.append([tool,
@@ -210,4 +217,3 @@ for fide in ['COG', 'EC number']:
                 df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
             ) == 2])
         print(f'matches with all: {matches_with_all}')
-

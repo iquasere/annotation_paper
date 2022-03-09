@@ -58,6 +58,7 @@ def results_analysis(out, prokka_date):
     ecs_ser = recognizer_genomes[recognizer_genomes['EC number'].notnull()].groupby('qseqid')['EC number'].apply(
         lambda x: '; '.join(set(x)))
     mantis_genomes = parse_mantis_consensus(f'{out}/mantis_genomes/consensus_annotation.tsv')
+    mantis_genomes['og'] = mantis_genomes['cog'].combine_first(mantis_genomes['arcog'])
     eggnog_genomes = pd.read_csv(
         f'{out}/eggnog_mapper_genomes/eggnog_results.emapper.annotations', sep='\t', skiprows=4, skipfooter=3)
     eggnog_genomes.replace('-', np.nan, inplace=True)
@@ -78,7 +79,6 @@ def results_analysis(out, prokka_date):
     dfast_df.rename(
         columns={'EC number': 'EC number (UniProt)', 'EC_number': 'EC number (DFAST)',
                  'Cross-reference (eggNOG)': 'COG (UniProt)', 'COG': 'COG (DFAST)'}, inplace=True)
-
     # Build final analysis DF
     res_df = blast_consensus(f'{out}/genes.blast')
     #res_df = res_df.groupby('qseqid')[res_df.columns.tolist()[1:]].first().reset_index()
@@ -88,7 +88,7 @@ def results_analysis(out, prokka_date):
     res_df = pd.merge(res_df, cog_ser, left_on='qseqid', right_index=True, how='left')
     res_df = pd.merge(res_df, ecs_ser, left_on='qseqid', right_index=True, how='left')
     res_df = pd.merge(res_df, eggnog_genomes[['#query', 'EC', 'eggNOG_OGs']], left_on='qseqid', right_on='#query', how='left')
-    res_df = pd.merge(res_df, mantis_genomes[['Query', 'enzyme_ec', 'cog']], left_on='qseqid', right_on='Query', how='left')
+    res_df = pd.merge(res_df, mantis_genomes[['Query', 'enzyme_ec', 'og']], left_on='qseqid', right_on='Query', how='left')
     res_df.rename(columns={
         'EC number_x': 'EC number (UniProt)',
         'EC number_y': 'EC number (UPIMAPI)',
@@ -97,12 +97,11 @@ def results_analysis(out, prokka_date):
         'enzyme_ec': 'EC number (mantis)',
         'Cross-reference (eggNOG)_x': 'COG (UniProt)',
         'Cross-reference (eggNOG)_y': 'COG (UPIMAPI)',
-        'cog_x': 'COG (reCOGnizer)',
+        'cog': 'COG (reCOGnizer)',
         'eggNOG_OGs': 'COG (eggNOG mapper)',
-        'cog_y': 'COG (mantis)'}, inplace=True)
+        'og': 'COG (mantis)'}, inplace=True)
     for col in ['#query', 'Query']:
         del res_df[col]
-
     res_df['EC number (UPIMAPI + reCOGnizer)'] = res_df['EC number (UPIMAPI)'].combine_first(res_df['EC number (reCOGnizer)'])
     res_df['COG (UPIMAPI + reCOGnizer)'] = res_df['COG (UPIMAPI)'].combine_first(res_df['COG (reCOGnizer)'])
     res_df = pd.merge(res_df, prokka_df[['Entry', 'EC number (Prokka)', 'COG (Prokka)']], on='Entry', how='left')
@@ -114,8 +113,7 @@ def results_analysis(out, prokka_date):
             quality_benchmark = add_to_quality_benchmark(quality_benchmark, res_df, fide, ftool)
     pd.DataFrame(quality_benchmark).to_excel(f'{out}/table5.xlsx', index=False)
     write_res_df(res_df, f'{out}/res_df.tsv')
-
-
+    return
     # not in the paper, not very informative
     for fide in ['EC number', 'COG']:
         heatmap_df = pd.DataFrame()
@@ -126,5 +124,7 @@ def results_analysis(out, prokka_date):
 
 
 results_analysis('ann_paper', '01032022')
-results_analysis('ann_paper/first_group', '02172022')
+results_analysis('ann_paper/first_group', '03052022')
 results_analysis('ann_paper/second_group', '02192022')
+results_analysis('ann_paper/third_group', '02252022')
+results_analysis('ann_paper/fourth_group', '03072022')
