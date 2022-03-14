@@ -65,11 +65,50 @@ for db in ['CDD', 'NCBIfam', 'Protein_Clusters', 'TIGRFAM', 'Pfam', 'Smart', 'CO
     table3.append(line)
 pd.DataFrame(table3).to_excel(f'{out}/table3.xlsx')
 
-# Table 4 is manually set
-# Table 5 is made in tools_benchmark
 
-# Table 6
-print('Table 6 in progress')
+# Table 4
+print('Table 4 in progress')
+iterations = ['', '/first_group', '/second_group', '/third_group', '/fourth_group', '/fifth_group']
+prokka_dates = ["01032022", "03052022", "02192022", "02252022", "03072022", "03112022"]
+table5 = pd.ExcelWriter(f'{out}/table5_all.xlsx', engine='xlsxwriter')
+df = pd.read_excel(f'{out}/table5.xlsx')
+all_t5 = pd.DataFrame(index=df.index, columns=df.columns)
+all_t5.fillna('', inplace=True)
+for col in all_t5.columns:
+    if col in ['Qualifier', 'Tool']:
+        all_t5[col] = df[col]
+    else:
+        all_t5[col] = all_t5[col].apply(lambda x: x.split())
+for i in range(len(iterations)):
+    df = pd.read_excel(f'{out}{iterations[i]}/table5.xlsx')
+    df.to_excel(table5, sheet_name=str(i), index=False)
+    n_proteins = count_on_file('>', f'{out}{iterations[i]}/proteomes.fasta')
+    n_proteins_dfast = count_on_file('>', f'{out}{iterations[i]}/dfast_genomes/protein.faa')
+    n_proteins_prokka = count_on_file('>', f'{out}{iterations[i]}/prokka_genomes/PROKKA_{prokka_dates[i]}.faa')
+    if iterations[i] != '/second_group':
+        for j in df.index:
+            for col in df.columns:
+                if col not in ['Qualifier', 'Tool']:
+                    if col in ['TPs', 'FPs', 'FNs']:
+                        all_t5.at[j, col] += [df.iloc[j][col] / (df.iloc[j]['TPs'] + df.iloc[j]['FPs'] + df.iloc[j]['FNs'])]
+                    elif col in ['# of total identifications']:
+                        n_p = n_proteins_dfast if df.iloc[j]['Tool'] == 'DFAST' else (n_proteins_prokka if df.iloc[j]['Tool'] == 'Prokka' else n_proteins)
+                        all_t5.at[j, col] += [df.iloc[j][col] / n_p]
+                    else:
+                        all_t5.at[j, col] += [df.iloc[j][col]]
+table5.save()
+final_t5 = pd.DataFrame(index=all_t5.index, columns=all_t5.columns)
+for col in all_t5.columns:
+    if col in ['Qualifier', 'Tool']:
+        final_t5[col] = all_t5[col]
+for j in df.index:
+    for col in all_t5.columns:
+        if col not in ['Qualifier', 'Tool']:
+            final_t5.at[j, col] = f'{round(np.mean(all_t5.iloc[j][col]) * 100, 2)} +- {round(np.std(all_t5.iloc[j][col]) * 100, 2)} %'
+final_t5.to_excel(f'{out}/final_t5.xlsx', index=False)
+
+# Table 5
+print('Table 5 in progress')
 n_prot_real = count_on_file('>', f'{out}/genes_MG.fasta')
 upimapi_real = pd.read_csv(f'{out}/upimapi_metagenome/UPIMAPI_results.tsv', sep='\t')
 upimapi_real = upimapi_real.groupby('qseqid')[['Entry', 'EC number', 'Cross-reference (eggNOG)']].first().reset_index()
@@ -106,11 +145,11 @@ real_df = pd.merge(real_df, mantis_real[['Query', 'enzyme_ec', 'cog']], left_on=
 real_df.rename(columns={
     'Entry': 'ID (UPIMAPI)',
     'DB ID': 'ID (reCOGnizer)',
-    '#query': 'ID (eggNOG-mapper)',
+    '#query': 'ID (eggNOG mapper)',
     'Query': 'ID (Mantis)',
     'EC number_x': 'EC number (UPIMAPI)',
     'EC number_y': 'EC number (reCOGnizer)',
-    'EC': 'EC number (eggNOG-mapper)',
+    'EC': 'EC number (eggNOG mapper)',
     'enzyme_ec': 'EC number (Mantis)',
     'Cross-reference (eggNOG)': 'COG (UPIMAPI)',
     'cog_x': 'COG (reCOGnizer)',
@@ -120,15 +159,8 @@ real_df['ID (UPIMAPI + reCOGnizer)'] = real_df['ID (UPIMAPI)'].combine_first(rea
 real_df['EC number (UPIMAPI + reCOGnizer)'] = real_df['EC number (UPIMAPI)'].combine_first(real_df['EC number (reCOGnizer)'])
 real_df['COG (UPIMAPI + reCOGnizer)'] = real_df['COG (UPIMAPI)'].combine_first(real_df['COG (reCOGnizer)'])
 
-iterations = ['', '/first_group', '/second_group', '/third_group', '/fourth_group']
-table5 = pd.ExcelWriter(f'{out}/table5_all.xlsx', engine='xlsxwriter')
-for i in range(len(iterations)):
-    df = pd.read_excel(f'{out}{iterations[i]}/table5.xlsx')
-    df.to_excel(table5, sheet_name=str(i), index=False)
-table5.save()
-
 table6 = []
-for tool in ['UPIMAPI + reCOGnizer', 'Mantis', 'eggNOG mapper']:
+for tool in ['UPIMAPI + reCOGnizer', 'UPIMAPI', 'reCOGnizer', 'Mantis', 'eggNOG mapper']:
     table6.append([tool,
                    percentage(real_df[f'ID ({tool})'].notnull().sum(), n_prot_real),
                    percentage(real_df[f'EC number ({tool})'].notnull().sum(), n_prot_real),
@@ -149,12 +181,14 @@ pd.DataFrame(table6, columns=['Tool', '# of proteins annotated', '# of proteins 
 # Table S5
 upimapi_res.iloc[:50].to_csv(f'{out}/Table S5.tsv', sep='\t', index=False)
 
-# Tables S6 and S7 are the e-value benchmarks, composed in the respective script
+# Tables S6 and S8 are the e-value benchmarks, composed in the respective script
 
-# Table S8
-print('Table S8 in progress')
+# Table S7
+print('Table S7 in progress')
 pd.read_excel(f'{out}/recognizer_genomes/reCOGnizer_results.xlsx', sheet_name='COG').iloc[:50].to_csv(
-    f'{out}/Table S8.tsv', sep='\t', index=False)
+    f'{out}/Table S7.tsv', sep='\t', index=False)
+
+# Table S9
 res_df = read_res_df(f'{out}/res_df.tsv')
 tools = ['UPIMAPI + reCOGnizer', 'eggNOG mapper', 'mantis', 'Prokka', 'DFAST']
 table_s_9 = []
@@ -217,3 +251,26 @@ for fide in ['COG', 'EC number']:
                 df[f'{fide} ({tool})'][i], df[f'{fide} ({other_tool})'][i]) for other_tool in other_tools]
             ) == 2])
         print(f'matches with all: {matches_with_all}')
+
+# some final values for text
+# % of proteins annotated
+n_proteins = [count_on_file('>', f'{out}{iterations[i]}/proteomes.fasta') for i in range(len(iterations))]
+n_proteins_prokka = [count_on_file('>', f'{out}{iterations[i]}/prokka_genomes/PROKKA_{prokka_dates[i]}.faa') for i in range(len(iterations))]
+n_proteins_dfast = [count_on_file('>', f'{out}{iterations[i]}/dfast_genomes/protein.faa') for i in range(len(iterations))]
+n_ids_u = [len(set(pd.read_csv(f'{out}{iterations[i]}/upimapi_genomes/UPIMAPI_results.tsv', sep='\t')['qseqid'])) for i in range(len(iterations))]
+n_ids_r = [len(set(pd.read_csv(f'{out}{iterations[i]}/recognizer_genomes/reCOGnizer_results.tsv', sep='\t')['qseqid'])) for i in range(len(iterations))]
+n_ids_e = [len(set(pd.read_csv(f'{out}{iterations[i]}/eggnog_mapper_genomes/eggnog_results.emapper.annotations', sep='\t', skiprows=4, skipfooter=3)['#query'])) for i in range(len(iterations))]
+n_ids_m = [len(set(parse_mantis_consensus(f'{out}{iterations[i]}/mantis_genomes/consensus_annotation.tsv')['Query'])) for i in range(len(iterations))]
+n_ids_p = []
+for i in range(len(iterations)):
+    df = pd.read_csv(f'{out}{iterations[i]}/prokka_genomes/PROKKA_{prokka_dates[i]}.tsv', sep='\t')
+    df = df[(df['ftype'] == 'CDS') & (df['product'] == 'hypothetical protein')]
+    n_ids_p.append(len(set(df['locus_tag'])))
+n_ids_d = []
+for i in range(len(iterations)):
+    df = parse_gff(f'{out}{iterations[i]}/dfast_genomes/genome_trimmed.gff')
+    df = df[(df['feature'] == 'CDS') & (df['product'] == 'hypothetical protein')]
+    n_ids_d.append(len(set(df['locus_tag'])))
+for t in [(n_ids_u, n_proteins), (n_ids_r, n_proteins), (n_ids_e, n_proteins), (n_ids_m, n_proteins), (n_ids_p, n_proteins_prokka), (n_ids_d, n_proteins_dfast)]:
+    print(np.mean([i/j for i, j in zip(t[0], t[1])]))
+
