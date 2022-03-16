@@ -3,29 +3,16 @@
 ![Graphical Abstract](assets/graphical_abstract.jpg "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets ")
 
 This repository was created to store the scripts used in the publication "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets". Main chapters are:
-1. [Obtention of datasets](https://github.com/iquasere/annotation_paper#obtention-of-datasets)
-2. [Installation of tools](https://github.com/iquasere/annotation_paper#installation-of-tools)
-3. [Run tools for reference genomes](https://github.com/iquasere/annotation_paper#run-tools-for-reference-genomes)
+1. [Installation of tools](https://github.com/iquasere/annotation_paper#installation-of-tools)
+2. [Retrieval of random selections of queries and construction of independent UniProts](https://github.com/iquasere/annotation_paper#retrieval-of-random-selections-of-queries-and-construction-of-independent-uniprots)
+3. [Run tools](https://github.com/iquasere/annotation_paper#run-tools)
 4. [Results analysis](https://github.com/iquasere/annotation_paper#results-analysis)
 5. [RNA-Seq simulation and quantification into readcounts](https://github.com/iquasere/annotation_paper#rna-seq-simulation-and-quantification-into-readcounts)
 6. [Metagenomics analysis](https://github.com/iquasere/annotation_paper#metagenomics-analysis)
 7. [Run KEGGCharter](https://github.com/iquasere/annotation_paper#run-keggcharter)
-8. [Publication](https://github.com/iquasere/annotation_paper#publication)
+8. [Submit assembly to webin](https://github.com/iquasere/annotation_paper#submit-assembly-to-webin)
+9. [Publication](https://github.com/iquasere/annotation_paper#publication)
 
-## Obtention of datasets
-
-Obtain genomes for 7 prokaryotes (archaea and bacteria), and join them in a single file.
-Simulate RNA-Seq data for those prokaryotes for three different conditions: over-, normal, and underexpression of a collection of genes.
-```
-git clone https://github.com/iquasere/annotation_paper.git
-mkdir ann_paper
-mkdir ann_paper/assets
-awk 'BEGIN{FS="\t"}{print $9}' annotation_paper/assets/simulated_taxa.tsv | tail -n +2 > ann_paper/assets/genomes_links.txt 
-wget -i ann_paper/assets/genomes_links.txt -P ann_paper
-gunzip ann_paper/*.gz
-awk 'BEGIN{FS=":"}{if ($0 ~ /^>/) {print ">"$3} else {print $0}}' ann_paper/*.fa >> ann_paper/genomes.fasta
-rm ann_paper/*.fa
-```
 
 ## Installation of tools
 
@@ -41,6 +28,12 @@ conda activate mantis_env
 python mantis setup_databases
 mv annotation_paper/assets/MANTIS.config mantis/MANTIS.config
 git clone https://github.com/iquasere/MOSCA.git
+```
+
+## Retrieval of random selections of queries and construction of independent UniProts
+
+Download UniProt database and split it for 15 cores.
+```
 wget https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_trembl.fasta.gz
 zcat uniprot_*.fasta.gz > resources_directory/uniprot.fasta
 rm uniprot_*.fasta.gz
@@ -50,12 +43,24 @@ awk -v size=15038597 -v pre=resources_directory/split_uniprot -v pad=2 '
    /^>/ { n++; if (n % size == 1) { close(fname); fname = sprintf("%s.%0" pad "d", pre, n) } }
    { print >> fname }
 ' resources_directory/uniprot.fasta
+```
+Obtain genomes for 7 prokaryotes (archaea and bacteria), and join them in a single file.
+Simulate RNA-Seq data for those prokaryotes for three different conditions: over-, normal, and underexpression of a collection of genes.
+```
+git clone https://github.com/iquasere/annotation_paper.git
+mkdir ann_paper
+mkdir ann_paper/assets
+awk 'BEGIN{FS="\t"}{print $9}' annotation_paper/assets/simulated_taxa.tsv | tail -n +2 > ann_paper/assets/genomes_links.txt 
+wget -i ann_paper/assets/genomes_links.txt -P ann_paper
+gunzip ann_paper/*.gz
+awk 'BEGIN{FS=":"}{if ($0 ~ /^>/) {print ">"$3} else {print $0}}' ann_paper/*.fa >> ann_paper/genomes.fasta
+rm ann_paper/*.fa
 python annotation_paper/scripts/download_proteomes.py
 awk '{print $1}' ann_paper/proteomes.fasta > tmp.fasta && mv tmp.fasta ann_paper/proteomes.fasta
 grep '>' ann_paper/proteomes.fasta > ann_paper/ids.txt
 python annotation_paper/scripts/uniprot_selection.py
 ```
-Also must prepare databases and queries for multiple iterations.
+Prepare databases (UniProts without query sequences) and queries for multiple iterations.
 ```
 python annotation_paper/scripts/uniprot_selection_workflow.py
 bash annotation_paper/scripts/preprocess_queries.sh
@@ -75,7 +80,7 @@ bash annotation_paper/scripts/run_tools.sh "/fifth_group"
  
 ## Results analysis
 
-First, download the proteomes corresponding to the reference genomes. Clean the proteomes, build DMND database from them, and align genes called with Prodigal to that database, obtaining the most likely identification of each called gene.
+First, download the proteomes corresponding to the reference genomes. Clean the proteomes, build DMND database from them, and align genes called with Prodigal to that database, obtaining the most likely identification of each called gene (all this happens in the script ```preprocess_results.sh``.
 ```
 bash annotation_paper/scripts/preprocess_results.sh "" "01032022"
 bash annotation_paper/scripts/preprocess_results.sh "/first_group" "03052022"
