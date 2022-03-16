@@ -1,6 +1,6 @@
 # UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets 
 
-![Graphical Abstract](assets/graphical_abstract.jpg "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets ")
+![Graphical Abstract](assets/graphical_abstract.png "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets ")
 
 This repository was created to store the scripts used in the publication "UPIMAPI, reCOGnizer and KEGGCharter: bioinformatics tools for functional annotation and visualization of (meta)-omics datasets". Main chapters are:
 1. [Installation of tools](https://github.com/iquasere/annotation_paper#installation-of-tools)
