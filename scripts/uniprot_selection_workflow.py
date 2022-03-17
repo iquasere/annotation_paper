@@ -55,7 +55,6 @@ with Pool(processes=15) as p:
         (f'resources_directory/split_uniprot.{dbs[i]}', 'ann_paper/ids.txt', f'ann_paper/uniprot_{i}.fasta')
         for i in range(15)])
 
-
 run_command(f'wget http://ftp.ensemblgenomes.org/pub/bacteria/current/species_EnsemblBacteria.txt -P {out}')
 prok_df = pd.read_csv(
     'species_EnsemblBacteria.txt', sep='\t', encoding='latin-1', skiprows=1, index_col=False,

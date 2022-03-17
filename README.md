@@ -87,7 +87,7 @@ bash annotation_paper/scripts/preprocess_results.sh "/first_group" "03052022"
 bash annotation_paper/scripts/preprocess_results.sh "/second_group" "02192022"
 bash annotation_paper/scripts/preprocess_results.sh "/third_group" "02252022"
 bash annotation_paper/scripts/preprocess_results.sh "/fourth_group" "03072022"
-bash annotation_paper/scripts/preprocess_results.sh "/fifth_group" "03112022"
+bash annotation_paper/scripts/preprocess_results.sh "/fifth_group" "03172022"
 ```
 Different evalues are tested for UPIMAPI and reCOGnizer.
 ```

@@ -10,7 +10,7 @@ cat ann_paper"$1"/*.fna > ann_paper"$1"/genomes.fasta
 awk '{print $1}' ann_paper"$1"/genomes.fasta > ann_paper"$1"/genomes_fixed.fasta
 
 echo "Gene calling"
-prodigal -i ann_paper"$1"/genomes_fixed.fasta -a ann_paper"$1"/genes.fasta
+prodigal -i ann_paper"$1"/genomes_fixed.fasta -a ann_paper"$1"/genes.fasta -p meta > ann_paper"$1"/prodigal_out.txt
 awk '{print $1}' ann_paper"$1"/genes.fasta | sed 's/*//' > ann_paper"$1"/genes_trimmed.fasta
 
 echo "Running UPIMAPI"
@@ -25,7 +25,6 @@ emapper.py -i ann_paper"$1"/genes_trimmed.fasta -o ann_paper"$1"/eggnog_mapper_g
 
 echo "Running DFAST"
 dfast -g ann_paper"$1"/genomes.fasta -o ann_paper"$1"/dfast_genomes --cpu 15 --dbroot resources_directory/dfast
-tr ' ' '_' ann_paper"$1"/genomes.fasta > ann_paper"$1"/genomes_fixed.fasta
 
 echo "Running Prokka"
 prokka --outdir ann_paper"$1"/prokka_genomes --metagenome --cpus 15 --centre X --compliant ann_paper"$1"/genomes_fixed.fasta
