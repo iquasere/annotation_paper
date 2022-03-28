@@ -94,6 +94,7 @@ with Pool(processes=15) as p:
     p.starmap(select_uniprot, [
         (f'resources_directory/split_uniprot.{dbs[i]}', 'ann_paper/second_group/ids.txt',
          f'ann_paper/second_group/uniprot_{i}.fasta') for i in range(15)])
+# No OGs were present in this species
 
 # 3rd iteration
 seed(2)

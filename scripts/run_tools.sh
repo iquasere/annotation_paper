@@ -5,7 +5,6 @@ cat ann_paper"$1"/uniprot_*.fasta > resources_directory/uniprot.fasta
 rm resources_directory/uniprot.dmnd
 
 echo "Building genomes.fasta"
-gunzip ann_paper"$1"/*.gz
 cat ann_paper"$1"/*.fna > ann_paper"$1"/genomes.fasta
 awk '{print $1}' ann_paper"$1"/genomes.fasta > ann_paper"$1"/genomes_fixed.fasta
 

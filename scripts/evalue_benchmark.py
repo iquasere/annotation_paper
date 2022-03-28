@@ -59,14 +59,13 @@ def analyze_recognizer(recognizer_excel_filename, metrics_filename):
                 recognizer_metrics.append(
                     {'evalue': evalue, 'db': db, 'TPs': tps, 'FPs': fps, 'FNs': fns, 'precision': precision,
                      'recall': recall, 'f1_score': f1_score})
-    recognizer_metrics = pd.DataFrame(recognizer_metrics).sort_values(by=['db', 'evalue'], ascending=False)
-    recognizer_metrics[['db', 'evalue'] + recognizer_metrics.columns.tolist()[2:]].to_excel(
-        metrics_filename, index=False)
+        recognizer_metrics = pd.DataFrame(recognizer_metrics).sort_values(by=['db', 'evalue'], ascending=False)
+        recognizer_metrics[['db', 'evalue'] + recognizer_metrics.columns.tolist()[2:]].to_excel(
+            metrics_filename, index=False)
 
 
 out = 'ann_paper'
 evalues = [1e-3, 1e-6, 1e-9, 1e-12, 1e-15, 1e-18, 1e-21, 1e-24, 1e-27, 1e-30]
-
 # UPIMAPI
 prodigal2diamond = blast_consensus(f'{out}/genes.blast')
 upimapi_meta = pd.read_csv(f'{out}/upimapi_genomes/UPIMAPI_results.tsv', sep='\t', low_memory=False)[
@@ -77,17 +76,16 @@ n_proteins = count_on_file('>', f'{out}/genes.fasta')
 upimapi_metrics = []
 for evalue in evalues:
     print(evalue)
-    upi_meta = upimapi_meta[upimapi_meta['evalue'] < evalue]
-    tp = (upi_meta['sseqid'] == upi_meta['Entry']).sum()
-    fp = (upi_meta['sseqid'] != upi_meta['Entry']).sum()
-    fn = n_proteins - len(upi_meta)      # proteins that could not be identified
-    precision, recall, f1_score = calculate_quality_metrics(tp, fp, fn)
-    upimapi_metrics.append({'evalue': evalue, 'TPs': tp, 'FPs': fp, 'FNs': fn, 'precision': precision,
-                            'recall': recall, 'f1_score': f1_score})
+upi_meta = upimapi_meta[upimapi_meta['evalue'] < evalue]
+tp = (upi_meta['sseqid'] == upi_meta['Entry']).sum()
+fp = (upi_meta['sseqid'] != upi_meta['Entry']).sum()
+fn = n_proteins - len(upi_meta)      # proteins that could not be identified
+precision, recall, f1_score = calculate_quality_metrics(tp, fp, fn)
+upimapi_metrics.append({'evalue': evalue, 'TPs': tp, 'FPs': fp, 'FNs': fn, 'precision': precision,
+                        'recall': recall, 'f1_score': f1_score})
 upimapi_metrics = pd.DataFrame(upimapi_metrics)
-upimapi_metrics.to_excel(f'{out}/table_s_6.xlsx')
-
+upimapi_metrics.to_excel(f'{out}/table_s6.xlsx')
 # reCOGnizer
 uniprotinfo_diamond = pd.read_csv(f'{out}/uniprotinfo.tsv', sep='\t')
 query2upinfo = pd.merge(prodigal2diamond, uniprotinfo_diamond, on='Entry', how='left')
-analyze_recognizer(f'{out}/recognizer_genomes/reCOGnizer_results.xlsx', f'{out}/table_s_7.xlsx')
+analyze_recognizer(f'{out}/recognizer_genomes/reCOGnizer_results.xlsx', f'{out}/table_s8.xlsx')

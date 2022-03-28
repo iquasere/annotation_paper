@@ -51,8 +51,8 @@ git clone https://github.com/iquasere/annotation_paper.git
 mkdir ann_paper
 mkdir ann_paper/assets
 awk 'BEGIN{FS="\t"}{print $9}' annotation_paper/assets/simulated_taxa.tsv | tail -n +2 > ann_paper/assets/genomes_links.txt 
-wget -i ann_paper/assets/genomes_links.txt -P ann_paper
-gunzip ann_paper/*.gz
+wget -i annotation_paper/assets/genomes_links.txt -P ann_paper
+zcat ann_paper/*.gz > genomes.fasta
 awk 'BEGIN{FS=":"}{if ($0 ~ /^>/) {print ">"$3} else {print $0}}' ann_paper/*.fa >> ann_paper/genomes.fasta
 rm ann_paper/*.fa
 python annotation_paper/scripts/download_proteomes.py
@@ -72,7 +72,6 @@ After this, edit all ```genomes_fixed.fasta``` to add "_N" (where N is iteration
 ```
 bash annotation_paper/scripts/run_tools.sh ""
 bash annotation_paper/scripts/run_tools.sh "/first_group"
-bash annotation_paper/scripts/run_tools.sh "/second_group"
 bash annotation_paper/scripts/run_tools.sh "/third_group"
 bash annotation_paper/scripts/run_tools.sh "/fourth_group"
 bash annotation_paper/scripts/run_tools.sh "/fifth_group"
@@ -82,11 +81,10 @@ bash annotation_paper/scripts/run_tools.sh "/fifth_group"
 
 First, download the proteomes corresponding to the reference genomes. Clean the proteomes, build DMND database from them, and align genes called with Prodigal to that database, obtaining the most likely identification of each called gene (all this happens in the script ```preprocess_results.sh``.
 ```
-bash annotation_paper/scripts/preprocess_results.sh "" "01032022"
-bash annotation_paper/scripts/preprocess_results.sh "/first_group" "03052022"
-bash annotation_paper/scripts/preprocess_results.sh "/second_group" "02192022"
-bash annotation_paper/scripts/preprocess_results.sh "/third_group" "02252022"
-bash annotation_paper/scripts/preprocess_results.sh "/fourth_group" "03072022"
+bash annotation_paper/scripts/preprocess_results.sh "" "03192022"
+bash annotation_paper/scripts/preprocess_results.sh "/first_group" "03252022"
+bash annotation_paper/scripts/preprocess_results.sh "/third_group" "03252022"
+bash annotation_paper/scripts/preprocess_results.sh "/fourth_group" "03252022"
 bash annotation_paper/scripts/preprocess_results.sh "/fifth_group" "03172022"
 ```
 Different evalues are tested for UPIMAPI and reCOGnizer.
@@ -142,7 +140,7 @@ grep 'ID=' ann_paper/dfast_metagenome/genome.gff > ann_paper/dfast_metagenome/ge
 ```
 python annotation_paper/scripts/prepare4keggcharter.py
 keggcharter.py -f ann_paper/keggcharter_input.tsv -o ann_paper/keggcharter_genomes -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -tcol mt_1,mt_100 -iq -not 7
-keggcharter.py -f ann_paper/upimapi_metagenome/UPIMAPI_results.tsv -o ann_paper/keggcharter_genomes -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -iq
+keggcharter.py -f ann_paper/upimapi_metagenome/UPIMAPI_results.tsv -o ann_paper/keggcharter_metagenome -rd resources_directory -tc "Taxonomic lineage (SPECIES)" -keggc "Cross-reference (KEGG)" -iq
 ```
 
 ## Submit assembly to webin

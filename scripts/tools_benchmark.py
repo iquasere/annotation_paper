@@ -123,9 +123,8 @@ def results_analysis(out, prokka_date):
         heatmap_df.fillna(value=0.0).astype(int).to_csv(f'{out}/heatmap_df_{fide}.tsv', sep='\t')
 
 
-results_analysis('ann_paper', '01032022')
-results_analysis('ann_paper/first_group', '03052022')
-results_analysis('ann_paper/second_group', '02192022')
-results_analysis('ann_paper/third_group', '02252022')
-results_analysis('ann_paper/fourth_group', '03072022')
+results_analysis('ann_paper', '03192022')
+results_analysis('ann_paper/first_group', '03252022')
+results_analysis('ann_paper/third_group', '03252022')
+results_analysis('ann_paper/fourth_group', '03252022')
 results_analysis('ann_paper/fifth_group', '03172022')
