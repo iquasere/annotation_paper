@@ -194,7 +194,8 @@ pd.DataFrame(table6, columns=['Tool', '# of proteins annotated', '# of proteins 
 # Tables S1, S2, S3 and S4 were manually composed
 
 # Table S5
-upimapi_res.iloc[:50].to_csv(f'{out}/Table S5.tsv', sep='\t', index=False)
+out = 'ann_paper/third_group'
+pd.read_csv(f'{out}/upimapi_genomes/UPIMAPI_results.tsv', sep='\t').iloc[:50].to_csv(f'{out}/Table S5.tsv', sep='\t', index=False)
 
 # Tables S6 and S8 are the e-value benchmarks, composed in the respective script
 
@@ -241,6 +242,7 @@ pd.DataFrame(table_s10).to_excel(f'{out}/table_s10.xlsx', index=False)
 
 
 # Table S11
+out = 'ann_paper'
 n_proteins = [count_on_file('>', f'{out}{iterations[i]}/genes_trimmed.fasta') for i in range(len(iterations))]
 n_proteins_prokka = [count_on_file('>', f'{out}{iterations[i]}/prokka_genomes/PROKKA_{prokka_dates[i]}.faa') for i in range(len(iterations))]
 n_proteins_dfast = [count_on_file('>', f'{out}{iterations[i]}/dfast_genomes/protein.faa') for i in range(len(iterations))]
