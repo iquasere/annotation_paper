@@ -155,4 +155,4 @@ ena-webin-cli -context genome -userName username -password 'password' -manifest 
 
 ## Publication
 
-This paper is still not published.
+This paper has been published in Structural and Computational Biotechnology Journal: https://www.sciencedirect.com/science/article/pii/S2001037022001179
